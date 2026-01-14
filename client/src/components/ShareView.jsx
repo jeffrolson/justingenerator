@@ -11,14 +11,22 @@ export function ShareView({ genId }) {
     useEffect(() => {
         const fetchShare = async () => {
             try {
+                console.log("Fetching share data for:", genId);
                 const res = await fetch(`${apiUrl}/api/public/share/${genId}`);
                 if (!res.ok) {
                     if (res.status === 404) throw new Error("This generation is not public or does not exist.");
                     throw new Error("Failed to load masterpiece");
                 }
                 const json = await res.json();
-                setData(json.generation);
+                console.log("Share data received:", json);
+                // Support both { generation: ... } and direct data
+                const fetchedData = json.generation || json;
+                if (!fetchedData || !fetchedData.imageUrl) {
+                    throw new Error("Invalid masterpiece data received");
+                }
+                setData(fetchedData);
             } catch (e) {
+                console.error("Share fetch error:", e);
                 setError(e.message);
             } finally {
                 setLoading(false);

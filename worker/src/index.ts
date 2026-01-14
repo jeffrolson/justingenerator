@@ -20,6 +20,49 @@ type Variables = {
   user: any // Payload from JWT
 }
 
+const PRESETS = [
+  {
+    id: 'cyberpunk',
+    title: 'Cyberpunk',
+    description: 'Neon-drenched futuristic style',
+    prompt: 'A futuristic cyberpunk portrait, neon lights, high tech, highly detailed, cinematic lighting',
+    tags: ['cyberpunk', 'futuristic', 'neon', 'sci-fi'],
+    sampleUrl: 'https://images.unsplash.com/photo-1614728263952-84ea256f9679?auto=format&fit=crop&w=800&q=80'
+  },
+  {
+    id: 'vintage-90s',
+    title: 'Vintage 90s',
+    description: 'Nostalgic disposable camera look',
+    prompt: 'A vintage 90s disposable camera photo, heavy flash, grainy texture, nostalgic atmosphere, suburban setting',
+    tags: ['vintage', '90s', 'retro', 'film'],
+    sampleUrl: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=800&q=80'
+  },
+  {
+    id: 'oil-painting',
+    title: 'Oil Painting',
+    description: 'Classical masterpiece aesthetic',
+    prompt: 'A classical oil painting portrait, visible brushstrokes, textured canvas, dramatic chiaroscuro lighting, museum quality',
+    tags: ['art', 'painting', 'classical', 'oil'],
+    sampleUrl: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&w=800&q=80'
+  },
+  {
+    id: 'anime',
+    title: 'Anime',
+    description: 'Clean and vibrant cel-shaded style',
+    prompt: 'A clean anime style portrait, cel-shaded, vibrant colors, expressive lines, studio ghibli inspired background',
+    tags: ['anime', 'illustration', 'vibrant', 'cartoon'],
+    sampleUrl: 'https://images.unsplash.com/photo-1578632292335-df3abbb0d586?auto=format&fit=crop&w=800&q=80'
+  },
+  {
+    id: 'pencil-sketch',
+    title: 'Pencil Sketch',
+    description: 'Hand-drawn artistic charcoal look',
+    prompt: 'A hand-drawn pencil and charcoal sketch portrait, detailed cross-hatching, artistic paper texture, expressive graphite strokes',
+    tags: ['sketch', 'drawing', 'artistic', 'charcoal'],
+    sampleUrl: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=800&q=80'
+  }
+]
+
 const app = new Hono<{ Bindings: Bindings, Variables: Variables }>()
 
 app.use('/*', cors())
@@ -162,7 +205,27 @@ app.post('/api/generate', async (c) => {
   }
 
   const file = body['image'] as File
-  const prompt = body['prompt'] as string || 'A stylized portrait'
+  const presetId = body['presetId'] as string
+  const remixFrom = body['remixFrom'] as string
+
+  let prompt = 'A stylish portrait'
+
+  if (presetId) {
+    const preset = PRESETS.find(p => p.id === presetId)
+    if (preset) {
+      prompt = preset.prompt
+    }
+  } else if (remixFrom) {
+    try {
+      const sourceGen: any = await firebase.firestore('GET', `generations/${remixFrom}`)
+      if (sourceGen && sourceGen.fields?.prompt?.stringValue) {
+        prompt = sourceGen.fields.prompt.stringValue
+        console.log(`Remixing from ${remixFrom}. Using hidden prompt: ${prompt.substring(0, 50)}...`)
+      }
+    } catch (e) {
+      console.warn(`Failed to fetch remix source ${remixFrom}, falling back to provided prompt`)
+    }
+  }
 
   if (!file) {
     return c.json({ error: 'No image uploaded' }, 400)
@@ -273,10 +336,34 @@ app.post('/api/generate', async (c) => {
     console.error("Summary generation failed:", se)
   }
 
-  // 6. Store Result to R2
+  // 6. Generate Tags (using Gemini)
+  let tags: string[] = []
+  try {
+    const geminiTagUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${c.env.GEMINI_API_KEY}`
+    const tagRes = await fetch(geminiTagUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          role: 'user',
+          parts: [{ text: `Generate 3-5 relevant single-word tags for an image based on this prompt: "${prompt}". Return ONLY the tags separated by commas.` }]
+        }],
+        generationConfig: { maxOutputTokens: 50 }
+      })
+    })
+    if (tagRes.ok) {
+      const tData = await tagRes.json() as any
+      const tagText = tData.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      tags = tagText.split(',').map((t: string) => t.trim().toLowerCase()).filter((t: string) => t.length > 0)
+    }
+  } catch (te) {
+    console.error("Tag generation failed:", te)
+  }
+
+  // 7. Store Result to R2
   await c.env.BUCKET.put(resultPath, aiImage)
 
-  // 7. Record Generation in Firestore
+  // 8. Record Generation in Firestore
   await firebase.firestore('PATCH', `generations/${genId}`, {
     fields: {
       userId: { stringValue: user.sub },
@@ -284,10 +371,14 @@ app.post('/api/generate', async (c) => {
       resultPath: { stringValue: resultPath },
       prompt: { stringValue: prompt },
       summary: { stringValue: summary },
+      tags: { arrayValue: { values: tags.map(t => ({ stringValue: t })) } },
       createdAt: { timestampValue: new Date().toISOString() },
       status: { stringValue: 'completed' },
       votes: { integerValue: 0 },
-      isPublic: { booleanValue: false }
+      likesCount: { integerValue: 0 },
+      bookmarksCount: { integerValue: 0 },
+      isPublic: { booleanValue: false },
+      remixFrom: remixFrom ? { stringValue: remixFrom } : { nullValue: null }
     }
   })
 
@@ -296,8 +387,14 @@ app.post('/api/generate', async (c) => {
     genId,
     remainingCredits: credits - 1,
     imageUrl: `/api/image/${encodeURIComponent(resultPath)}`,
-    summary
+    summary,
+    tags
   })
+})
+
+// Presets: Get all available styles
+app.get('/api/presets', async (c) => {
+  return c.json({ status: 'success', presets: PRESETS.map(p => ({ id: p.id, title: p.title, description: p.description, sampleUrl: p.sampleUrl, tags: p.tags })) })
 })
 
 // Upload-only: Pre-upload for batch jobs
@@ -374,46 +471,100 @@ app.get('/api/jobs/active', async (c) => {
 app.get('/api/generations', async (c) => {
   const user = c.get('user')
   const firebase = c.get('firebase')
+  const filter = c.req.query('filter') || 'my' // 'my', 'likes', 'bookmarks'
+  const tag = c.req.query('tag')
 
   try {
-    const results = await firebase.query('generations', {
-      where: {
-        compositeFilter: {
-          op: 'AND',
-          filters: [
-            {
-              fieldFilter: {
-                field: { fieldPath: 'userId' },
-                op: 'EQUAL',
-                value: { stringValue: user.sub }
-              }
-            },
-            {
-              fieldFilter: {
-                field: { fieldPath: 'status' },
-                op: 'EQUAL',
-                value: { stringValue: 'completed' }
-              }
-            }
-          ]
-        }
-      },
+    let structuredQuery: any = {
+      from: [{ collectionId: 'generations' }],
       orderBy: [{
         field: { fieldPath: 'createdAt' },
         direction: 'DESCENDING'
       }],
-      limit: 20
-    })
+      limit: 50
+    }
+
+    const filters: any[] = []
+
+    if (filter === 'my') {
+      filters.push({ fieldFilter: { field: { fieldPath: 'userId' }, op: 'EQUAL', value: { stringValue: user.sub } } })
+      filters.push({ fieldFilter: { field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'completed' } } })
+    }
+
+    if (tag) {
+      filters.push({ fieldFilter: { field: { fieldPath: 'tags' }, op: 'ARRAY_CONTAINS', value: { stringValue: tag.toLowerCase() } } })
+    }
+
+    if (filters.length > 0) {
+      if (filters.length === 1) {
+        structuredQuery.where = filters[0]
+      } else {
+        structuredQuery.where = {
+          compositeFilter: {
+            op: 'AND',
+            filters
+          }
+        }
+      }
+    }
+
+    if (filter === 'likes' || filter === 'bookmarks') {
+      // 1. Fetch the IDs from the interaction subcollection
+      const interactionPath = `users/${user.sub}/${filter}`
+      const interactions: any = await firebase.firestore('GET', interactionPath)
+
+      if (!interactions || !interactions.documents || interactions.documents.length === 0) {
+        return c.json({ status: 'success', generations: [] })
+      }
+
+      const ids = interactions.documents.map((d: any) => d.name.split('/').pop())
+
+      // 2. Fetch the generations for these IDs
+      // Note: IN query has a limit of 10 items in standard Firestore, but REST API might be different. 
+      // However, we already have a potential composite filter if tag is present.
+      // Firestore doesn't support IN and ARRAY_CONTAINS in the same query easily without indexes.
+      // For simplicity, let's keep it as is or handle tag filtering in memory for likes/bookmarks if needed.
+      const idFilter = {
+        fieldFilter: {
+          field: { fieldPath: '__name__' },
+          op: 'IN',
+          value: {
+            arrayValue: {
+              values: ids.map((id: string) => ({ stringValue: `projects/${firebase.projectId}/databases/${firebase.databaseId}/documents/generations/${id}` }))
+            }
+          }
+        }
+      }
+
+      if (tag) {
+        structuredQuery.where = {
+          compositeFilter: {
+            op: 'AND',
+            filters: [
+              idFilter,
+              { fieldFilter: { field: { fieldPath: 'tags' }, op: 'ARRAY_CONTAINS', value: { stringValue: tag.toLowerCase() } } }
+            ]
+          }
+        }
+      } else {
+        structuredQuery.where = idFilter
+      }
+    }
+
+    const results = await firebase.query('generations', structuredQuery)
 
     return c.json({
       status: 'success',
-      generations: results.map(g => ({
+      generations: results.map((g: any) => ({
         id: g.id,
         prompt: g.prompt?.stringValue,
         summary: g.summary?.stringValue || g.prompt?.stringValue?.substring(0, 30),
         imageUrl: `/api/image/${encodeURIComponent(g.resultPath?.stringValue)}`,
+        tags: g.tags?.arrayValue?.values?.map((v: any) => v.stringValue) || [],
         createdAt: g.createdAt?.timestampValue,
         votes: parseInt(g.votes?.integerValue || '0'),
+        likesCount: parseInt(g.likesCount?.integerValue || '0'),
+        bookmarksCount: parseInt(g.bookmarksCount?.integerValue || '0'),
         isPublic: g.isPublic?.booleanValue || false
       }))
     })
@@ -470,11 +621,123 @@ app.get('/api/public/share/:id', async (c) => {
   }
 
   return c.json({
-    id,
-    summary: gen.fields?.summary?.stringValue || gen.fields?.prompt?.stringValue?.substring(0, 30),
-    imageUrl: `/api/public/image/${encodeURIComponent(gen.fields?.resultPath?.stringValue)}`,
-    createdAt: gen.fields?.createdAt?.timestampValue
+    status: 'success',
+    generation: {
+      id,
+      summary: gen.fields?.summary?.stringValue || gen.fields?.prompt?.stringValue?.substring(0, 30),
+      prompt: gen.fields?.prompt?.stringValue,
+      imageUrl: `/api/public/image/${encodeURIComponent(gen.fields?.resultPath?.stringValue)}`,
+      createdAt: gen.fields?.createdAt?.timestampValue,
+      votes: parseInt(gen.fields?.votes?.integerValue || '0'),
+      likesCount: parseInt(gen.fields?.likesCount?.integerValue || '0'),
+      bookmarksCount: parseInt(gen.fields?.bookmarksCount?.integerValue || '0'),
+      resultPath: gen.fields?.resultPath?.stringValue
+    }
   })
+})
+
+// Public Feed (Instagram Explore Style)
+app.get('/api/public/feed', async (c) => {
+  const firebase = new Firebase(c.env)
+
+  // Fetch latest public generations
+  const structuredQuery = {
+    where: {
+      fieldFilter: {
+        field: { fieldPath: 'isPublic' },
+        op: 'EQUAL',
+        value: { booleanValue: true }
+      }
+    },
+    orderBy: [{
+      field: { fieldPath: 'createdAt' },
+      direction: 'DESCENDING'
+    }],
+    limit: 50
+  }
+
+  try {
+    const results: any = await firebase.query('generations', structuredQuery)
+
+    return c.json({
+      status: 'success',
+      feed: results.map((g: any) => ({
+        id: g.id,
+        summary: g.summary?.stringValue || g.prompt?.stringValue?.substring(0, 30),
+        imageUrl: `/api/image/${encodeURIComponent(g.resultPath?.stringValue)}`,
+        likesCount: parseInt(g.likesCount?.integerValue || '0'),
+        bookmarksCount: parseInt(g.bookmarksCount?.integerValue || '0'),
+        createdAt: g.createdAt?.timestampValue
+      }))
+    })
+  } catch (e: any) {
+    console.error('Feed fetch failed:', e.message)
+    return c.json({ error: 'Failed to fetch feed', details: e.message }, 500)
+  }
+})
+
+// Like a generation
+app.post('/api/generations/:id/like', async (c) => {
+  const user = c.get('user')
+  const id = c.req.param('id')
+  const firebase = c.get('firebase')
+
+  // 1. Toggle like in user's collection
+  const likePath = `users/${user.sub}/likes/${id}`
+  const existingLike: any = await firebase.firestore('GET', likePath).catch(() => null)
+  const isLiked = !!existingLike
+
+  if (isLiked) {
+    await firebase.firestore('DELETE', likePath)
+  } else {
+    await firebase.firestore('PATCH', likePath, {
+      fields: { createdAt: { timestampValue: new Date().toISOString() } }
+    })
+  }
+
+  // 2. Update likesCount on the generation
+  const gen: any = await firebase.firestore('GET', `generations/${id}`)
+  if (gen) {
+    const currentLikes = parseInt(gen.fields?.likesCount?.integerValue || '0')
+    const newLikes = isLiked ? Math.max(0, currentLikes - 1) : currentLikes + 1
+    await firebase.firestore('PATCH', `generations/${id}?updateMask.fieldPaths=likesCount`, {
+      fields: { likesCount: { integerValue: newLikes } }
+    })
+  }
+
+  return c.json({ status: 'success', isLiked: !isLiked })
+})
+
+// Bookmark a generation
+app.post('/api/generations/:id/bookmark', async (c) => {
+  const user = c.get('user')
+  const id = c.req.param('id')
+  const firebase = c.get('firebase')
+
+  // 1. Toggle bookmark in user's collection
+  const bookmarkPath = `users/${user.sub}/bookmarks/${id}`
+  const existingBookmark: any = await firebase.firestore('GET', bookmarkPath).catch(() => null)
+  const isBookmarked = !!existingBookmark
+
+  if (isBookmarked) {
+    await firebase.firestore('DELETE', bookmarkPath)
+  } else {
+    await firebase.firestore('PATCH', bookmarkPath, {
+      fields: { createdAt: { timestampValue: new Date().toISOString() } }
+    })
+  }
+
+  // 2. Update bookmarksCount on the generation
+  const gen: any = await firebase.firestore('GET', `generations/${id}`)
+  if (gen) {
+    const currentBookmarks = parseInt(gen.fields?.bookmarksCount?.integerValue || '0')
+    const newBookmarks = isBookmarked ? Math.max(0, currentBookmarks - 1) : currentBookmarks + 1
+    await firebase.firestore('PATCH', `generations/${id}?updateMask.fieldPaths=bookmarksCount`, {
+      fields: { bookmarksCount: { integerValue: newBookmarks } }
+    })
+  }
+
+  return c.json({ status: 'success', isBookmarked: !isBookmarked })
 })
 
 // Public image proxy
