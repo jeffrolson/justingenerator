@@ -10,17 +10,25 @@ export class Firebase {
     projectId: string
     clientEmail: string
     privateKey: string
+    databaseId: string
 
-    constructor(env: Env) {
+    constructor(env: Env & { FIREBASE_DATABASE_ID?: string }) {
         if (!env.FIREBASE_PROJECT_ID || !env.FIREBASE_CLIENT_EMAIL || !env.FIREBASE_PRIVATE_KEY) {
             throw new Error('Missing Firebase configuration')
         }
-        this.projectId = env.FIREBASE_PROJECT_ID
-        this.clientEmail = env.FIREBASE_CLIENT_EMAIL
-        this.privateKey = env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+        this.projectId = env.FIREBASE_PROJECT_ID.trim()
+        this.clientEmail = env.FIREBASE_CLIENT_EMAIL.trim()
+        // Handle both escaped \n and actual newlines
+        this.privateKey = env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n').trim()
+        this.databaseId = env.FIREBASE_DATABASE_ID?.trim() || '(default)'
     }
 
     async verifyToken(token: string) {
+        if (!token) throw new Error("Token is missing")
+        if (typeof token !== 'string') throw new Error("Token must be a string")
+
+        console.log(`Verifying token (len: ${token.length}) for project: [${this.projectId}]`)
+
         const JWKS = createRemoteJWKSet(new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'))
 
         const { payload } = await jwtVerify(token, JWKS, {
@@ -65,25 +73,63 @@ export class Firebase {
     }
 
     async firestore(method: string, path: string, body?: any) {
-        const token = await this.getAccessToken()
-        const url = `https://firestore.googleapis.com/v1/projects/${this.projectId}/databases/(default)/documents/${path}`
+        const accessToken = await this.getAccessToken()
+        const url = `https://firestore.googleapis.com/v1/projects/${this.projectId}/databases/${this.databaseId}/documents/${path}`
 
-        const response = await fetch(url, {
+        const res = await fetch(url, {
             method,
             headers: {
-                'Authorization': `Bearer ${token}`,
+                'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json'
             },
             body: body ? JSON.stringify(body) : undefined
         })
 
-        if (!response.ok) {
-            // Handle 404 cleanly for gets
-            if (method === 'GET' && response.status === 404) return null
-            const text = await response.text()
-            throw new Error(`Firestore ${method} ${path} failed: ${response.status} ${text}`)
+        if (!res.ok) {
+            const errorText = await res.text()
+            console.error(`Firestore Error [${method} ${path}]:`, {
+                status: res.status,
+                error: errorText
+            })
+            if (res.status === 404) return null
+            throw new Error(`Firestore error: ${res.status} ${errorText}`)
         }
 
-        return response.json()
+        const result = await res.json()
+        console.log(`Firestore Success [${method} ${path}]`)
+        return result
+    }
+
+    async query(collection: string, structuredQuery: any) {
+        const accessToken = await this.getAccessToken()
+        const url = `https://firestore.googleapis.com/v1/projects/${this.projectId}/databases/${this.databaseId}/documents:runQuery`
+
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                structuredQuery: {
+                    from: [{ collectionId: collection }],
+                    ...structuredQuery
+                }
+            })
+        })
+
+        if (!res.ok) {
+            const errorText = await res.text()
+            throw new Error(`Firestore Query Error: ${res.status} ${errorText}`)
+        }
+
+        const results = await res.json() as any[]
+        // runQuery returns an array of objects like [{ document: {...} }, { readTime: ... }]
+        return results
+            .filter(r => r.document)
+            .map(r => ({
+                id: r.document.name.split('/').pop(),
+                ...r.document.fields
+            }))
     }
 }

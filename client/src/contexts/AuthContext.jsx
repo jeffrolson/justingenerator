@@ -14,23 +14,37 @@ export function AuthProvider({ children }) {
     const [backendUser, setBackendUser] = useState(null);
 
     useEffect(() => {
+        const timeout = setTimeout(() => {
+            if (loading) {
+                console.warn("Auth check timed out. Forcing loading to false.");
+                setLoading(false);
+            }
+        }, 5000);
+
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            clearTimeout(timeout);
+            console.log("onAuthStateChanged fired. User:", firebaseUser?.email || "null");
             setUser(firebaseUser);
 
             if (firebaseUser) {
                 // Sync with backend
                 try {
                     const token = await firebaseUser.getIdToken();
-                    // Use config for API URL or default to worker path
-                    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+                    const apiUrl = 'https://worker.jeffrolson1.workers.dev';
+                    console.log("Syncing with backend at:", apiUrl);
                     const res = await fetch(`${apiUrl}/api/auth/verify`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ token })
                     });
+
                     if (res.ok) {
                         const data = await res.json();
+                        console.log("Backend sync successful:", data);
                         setBackendUser(data.user);
+                    } else {
+                        const errData = await res.json().catch(() => ({}));
+                        console.error("Backend sync failed with status:", res.status, errData);
                     }
                 } catch (error) {
                     console.error("Failed to sync user with backend:", error);
@@ -42,7 +56,10 @@ export function AuthProvider({ children }) {
             setLoading(false);
         });
 
-        return unsubscribe;
+        return () => {
+            unsubscribe();
+            clearTimeout(timeout);
+        };
     }, []);
 
     const login = () => {

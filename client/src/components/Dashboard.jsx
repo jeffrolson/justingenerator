@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../lib/firebase'; // Need auth for getToken
 import { Sparkles, Image as ImageIcon, Upload, Download, LogOut, Plus } from 'lucide-react';
@@ -10,8 +10,37 @@ export function Dashboard() {
     const [generating, setGenerating] = useState(false);
     const [result, setResult] = useState(null);
     const [error, setError] = useState(null);
+    const [showFullSize, setShowFullSize] = useState(false);
+    const [history, setHistory] = useState([]);
+    const [loadingHistory, setLoadingHistory] = useState(true);
+    const [previewImage, setPreviewImage] = useState(null);
 
-    const credits = backendUser?.credits?.integerValue || 0;
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+
+    const fetchHistory = async () => {
+        if (!user) return;
+        try {
+            const token = await user.getIdToken();
+            const res = await fetch(`${apiUrl}/api/generations`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setHistory(data.generations || []);
+            }
+        } catch (e) {
+            console.error("Failed to fetch history:", e);
+        } finally {
+            setLoadingHistory(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchHistory();
+    }, [user]);
+
+    const credits = parseInt(backendUser?.credits?.integerValue || '0');
+    console.log("Dashboard Credits:", credits, "Type:", typeof credits);
 
     const handleGenerate = async () => {
         if (!file) return;
@@ -26,8 +55,7 @@ export function Dashboard() {
             formData.append('image', file);
             formData.append('prompt', prompt || 'A futuristic cyberpunk portrait');
 
-            // Use VITE_API_URL or default
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+            // Use apiUrl defined above
 
             const res = await fetch(`${apiUrl}/api/generate`, {
                 method: 'POST',
@@ -43,7 +71,17 @@ export function Dashboard() {
             }
 
             const data = await res.json();
-            setResult(`${apiUrl}${data.imageUrl}`);
+            const newImageUrl = `${apiUrl}${data.imageUrl}`;
+            setResult(newImageUrl);
+
+            // Add to history locally for immediate feedback
+            setHistory(prev => [{
+                id: data.genId,
+                prompt: prompt || 'A futuristic cyberpunk portrait',
+                imageUrl: data.imageUrl,
+                createdAt: new Date().toISOString()
+            }, ...prev]);
+
             // Ideally we should update credits in context, but for now a refresh or polling implies it updates eventually. 
             // Force reload of user sync? Context handles it on page load, maybe we trigger a refetch? 
             // Simplified: We assume user will refresh or next action will sync.
@@ -184,13 +222,16 @@ export function Dashboard() {
                             </div>
                         </div>
                     ) : result ? (
-                        <div className="w-full h-full relative group animate-fade-in-up rounded-2xl overflow-hidden">
+                        <div className="w-full h-full max-h-[600px] flex items-center justify-center relative group animate-fade-in-up rounded-2xl overflow-hidden cursor-zoom-in" onClick={() => { setPreviewImage(result); setShowFullSize(true); }}>
                             <img
                                 src={result}
                                 alt="Generated"
-                                className="w-full h-full object-contain bg-black/50 backdrop-blur-sm"
+                                className="max-w-full max-h-full object-contain bg-black/50 backdrop-blur-sm transition-transform duration-500 group-hover:scale-[1.02]"
                             />
-                            <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-300 md:translate-y-0">
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
+                                <Plus className="w-12 h-12 text-white/80" />
+                            </div>
+                            <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-300 md:translate-y-0" onClick={e => e.stopPropagation()}>
                                 <a
                                     href={result}
                                     download="generated.png"
@@ -211,6 +252,93 @@ export function Dashboard() {
                     )}
                 </section>
             </main>
+
+            {/* History Feed Section */}
+            <section className="mt-16 space-y-8 pb-12">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white/5 rounded-lg border border-white/10 shadow-inner">
+                            <ImageIcon className="w-5 h-5 text-violet-400" />
+                        </div>
+                        <h3 className="text-xl font-bold text-white tracking-tight">Your Gallery</h3>
+                    </div>
+                    {history.length > 0 && (
+                        <span className="text-xs font-medium text-slate-500 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                            {history.length} Generations
+                        </span>
+                    )}
+                </div>
+
+                {loadingHistory ? (
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        {[...Array(5)].map((_, i) => (
+                            <div key={i} className="aspect-square bg-white/5 rounded-xl animate-pulse border border-white/5"></div>
+                        ))}
+                    </div>
+                ) : history.length > 0 ? (
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 animate-fade-in">
+                        {history.map((item) => (
+                            <div
+                                key={item.id}
+                                className="group relative aspect-square glass-card p-1 cursor-pointer overflow-hidden rounded-xl border-white/5 hover:border-violet-500/30"
+                                onClick={() => {
+                                    setPreviewImage(`${apiUrl}${item.imageUrl}`);
+                                    setShowFullSize(true);
+                                }}
+                            >
+                                <img
+                                    src={`${apiUrl}${item.imageUrl}`}
+                                    alt={item.prompt}
+                                    className="w-full h-full object-cover rounded-lg transition-transform duration-500 group-hover:scale-110"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                    <div className="absolute bottom-2 left-2 right-2">
+                                        <p className="text-[10px] text-white/90 font-medium line-clamp-2 leading-tight">
+                                            {item.prompt}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-20 glass-card bg-white/[0.01] border-dashed border-white/10">
+                        <p className="text-slate-500 font-medium">Your artistic journey starts with your first generation.</p>
+                    </div>
+                )}
+            </section>
+
+            {/* Full Size Modal */}
+            {showFullSize && previewImage && (
+                <div
+                    className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 md:p-12 animate-fade-in"
+                    onClick={() => setShowFullSize(false)}
+                >
+                    <button
+                        className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors p-2 rounded-full hover:bg-white/10 z-[110]"
+                        onClick={() => setShowFullSize(false)}
+                    >
+                        <Plus className="w-8 h-8 rotate-45" />
+                    </button>
+                    <div className="relative max-w-full max-h-full flex items-center justify-center animate-scale-in">
+                        <img
+                            src={previewImage}
+                            alt="Full size"
+                            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                            onClick={e => e.stopPropagation()}
+                        />
+                        <a
+                            href={previewImage}
+                            download="generated.png"
+                            onClick={e => e.stopPropagation()}
+                            className="absolute bottom-4 right-4 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white p-3 rounded-full transition-all border border-white/20 hover:scale-110 shadow-xl"
+                            title="Download"
+                        >
+                            <Download className="w-6 h-6" />
+                        </a>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
