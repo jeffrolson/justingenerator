@@ -102,6 +102,8 @@ export function ExploreFeed({ onRemix }) {
                     >
                         <img
                             src={getImageUrl(item.imageUrl, apiUrl)}
+                            onLoad={() => console.log('Image loaded:', getImageUrl(item.imageUrl, apiUrl))}
+                            onError={() => console.error('Image FAILED:', { path: item.imageUrl, apiUrl, final: getImageUrl(item.imageUrl, apiUrl) })}
                             alt={item.summary}
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                         />
