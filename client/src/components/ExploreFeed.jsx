@@ -100,7 +100,7 @@ export function ExploreFeed({ onRemix }) {
                         className="group relative aspect-[3/4] rounded-2xl overflow-hidden bg-gray-900 border border-white/5 hover:border-violet-500/50 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-violet-500/20"
                     >
                         <img
-                            src={`${apiUrl}${item.imageUrl}`}
+                            src={item.imageUrl.startsWith('http') ? item.imageUrl : `${apiUrl}${item.imageUrl}`}
                             alt={item.summary}
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                         />

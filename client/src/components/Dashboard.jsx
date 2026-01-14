@@ -410,7 +410,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                         {remixSource ? (
                             <div className="p-4 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex gap-4 items-center animate-fade-in-up">
                                 <div className="w-16 h-16 rounded-lg overflow-hidden border border-white/10 shrink-0">
-                                    <img src={`${apiUrl}${remixSource.imageUrl}`} alt="Remix Source" className="w-full h-full object-cover" />
+                                    <img src={remixSource.imageUrl.startsWith('http') ? remixSource.imageUrl : `${apiUrl}${remixSource.imageUrl}`} alt="Remix Source" className="w-full h-full object-cover" />
                                 </div>
                                 <div className="flex-grow">
                                     <p className="text-sm font-bold text-violet-300">Remixing Original Prompt</p>
@@ -678,7 +678,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                     }}
                                 >
                                     <img
-                                        src={`${apiUrl}${item.imageUrl}`}
+                                        src={item.imageUrl.startsWith('http') ? item.imageUrl : `${apiUrl}${item.imageUrl}`}
                                         alt={item.prompt}
                                         className="w-full h-full object-cover rounded-xl transition-transform duration-700 group-hover:scale-105"
                                     />

@@ -217,14 +217,23 @@ app.post('/api/generate', async (c) => {
       prompt = preset.prompt
     }
   } else if (remixFrom) {
-    try {
-      const sourceGen: any = await firebase.firestore('GET', `generations/${remixFrom}`)
-      if (sourceGen && sourceGen.fields?.prompt?.stringValue) {
-        prompt = sourceGen.fields.prompt.stringValue
-        console.log(`Remixing from ${remixFrom}. Using hidden prompt: ${prompt.substring(0, 50)}...`)
+    if (remixFrom.startsWith('seed-')) {
+      const presetId = remixFrom.replace('seed-', '')
+      const preset = PRESETS.find(p => p.id === presetId)
+      if (preset) {
+        prompt = preset.prompt
+        console.log(`Remixing from seed preset: ${presetId}`)
       }
-    } catch (e) {
-      console.warn(`Failed to fetch remix source ${remixFrom}, falling back to provided prompt`)
+    } else {
+      try {
+        const sourceGen: any = await firebase.firestore('GET', `generations/${remixFrom}`)
+        if (sourceGen && sourceGen.fields?.prompt?.stringValue) {
+          prompt = sourceGen.fields.prompt.stringValue
+          console.log(`Remixing from ${remixFrom}. Using hidden prompt: ${prompt.substring(0, 50)}...`)
+        }
+      } catch (e) {
+        console.warn(`Failed to fetch remix source ${remixFrom}, falling back to provided prompt`)
+      }
     }
   }
 
@@ -660,16 +669,30 @@ app.get('/api/public/feed', async (c) => {
   try {
     const results: any = await firebase.query('generations', structuredQuery)
 
+    const feed = results.map((g: any) => ({
+      id: g.id,
+      summary: g.summary?.stringValue || g.prompt?.stringValue?.substring(0, 30),
+      imageUrl: g.resultPath?.stringValue?.startsWith('http')
+        ? g.resultPath.stringValue
+        : `/api/image/${encodeURIComponent(g.resultPath?.stringValue)}`,
+      likesCount: parseInt(g.likesCount?.integerValue || '0'),
+      bookmarksCount: parseInt(g.bookmarksCount?.integerValue || '0'),
+      createdAt: g.createdAt?.timestampValue
+    }))
+
+    // Add seed data from PRESETS
+    const seedFeed = PRESETS.map(p => ({
+      id: `seed-${p.id}`,
+      summary: p.title,
+      imageUrl: p.sampleUrl,
+      likesCount: Math.floor(Math.random() * 50) + 10,
+      bookmarksCount: Math.floor(Math.random() * 20) + 5,
+      createdAt: new Date().toISOString()
+    }))
+
     return c.json({
       status: 'success',
-      feed: results.map((g: any) => ({
-        id: g.id,
-        summary: g.summary?.stringValue || g.prompt?.stringValue?.substring(0, 30),
-        imageUrl: `/api/image/${encodeURIComponent(g.resultPath?.stringValue)}`,
-        likesCount: parseInt(g.likesCount?.integerValue || '0'),
-        bookmarksCount: parseInt(g.bookmarksCount?.integerValue || '0'),
-        createdAt: g.createdAt?.timestampValue
-      }))
+      feed: [...seedFeed, ...feed]
     })
   } catch (e: any) {
     console.error('Feed fetch failed:', e.message)
