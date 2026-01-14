@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../lib/firebase'; // Need auth for getToken
-import { Sparkles, Image as ImageIcon, Upload, Download, LogOut, Plus } from 'lucide-react';
+import { Sparkles, Image as ImageIcon, Upload, Download, LogOut, Plus, ThumbsUp, ThumbsDown, Share2, ExternalLink, Check } from 'lucide-react';
 
 export function Dashboard() {
     const { user, backendUser, logout } = useAuth();
@@ -14,6 +14,8 @@ export function Dashboard() {
     const [history, setHistory] = useState([]);
     const [loadingHistory, setLoadingHistory] = useState(true);
     const [previewImage, setPreviewImage] = useState(null);
+    const [sharing, setSharing] = useState(null);
+    const [activeJob, setActiveJob] = useState(null);
 
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
@@ -93,7 +95,7 @@ export function Dashboard() {
         }
     };
 
-    const [activeJob, setActiveJob] = useState(null);
+
 
     // Placeholder for Firestore instance if you were using the SDK directly, 
     // but since we want "real-time" and this is a serverless demo, 
@@ -181,6 +183,55 @@ export function Dashboard() {
             setError(e.message);
         } finally {
             setGenerating(false);
+        }
+    };
+
+    const handleVote = async (id, type) => {
+        try {
+            const token = await user.getIdToken();
+            const res = await fetch(`${apiUrl}/api/generations/${id}/vote`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ type })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setHistory(prev => prev.map(item =>
+                    item.id === id ? { ...item, votes: data.votes } : item
+                ));
+            }
+        } catch (e) {
+            console.error("Vote failed:", e);
+        }
+    };
+
+    const handleShare = async (id) => {
+        try {
+            const token = await user.getIdToken();
+            const res = await fetch(`${apiUrl}/api/generations/${id}/share`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setHistory(prev => prev.map(item =>
+                    item.id === id ? { ...item, isPublic: data.isPublic } : item
+                ));
+
+                if (data.isPublic) {
+                    const shareUrl = `${window.location.origin}/share/${id}`;
+                    await navigator.clipboard.writeText(shareUrl);
+                    setSharing(id);
+                    setTimeout(() => setSharing(null), 2000);
+                }
+            }
+        } catch (e) {
+            console.error("Share failed:", e);
         }
     };
 
@@ -422,26 +473,71 @@ export function Dashboard() {
                         ))}
                     </div>
                 ) : history.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 animate-fade-in">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-fade-in">
                         {history.map((item) => (
                             <div
                                 key={item.id}
-                                className="group relative aspect-square glass-card p-1 cursor-pointer overflow-hidden rounded-xl border-white/5 hover:border-violet-500/30"
-                                onClick={() => {
-                                    setPreviewImage(`${apiUrl}${item.imageUrl}`);
-                                    setShowFullSize(true);
-                                }}
+                                className="group flex flex-col space-y-3"
                             >
-                                <img
-                                    src={`${apiUrl}${item.imageUrl}`}
-                                    alt={item.prompt}
-                                    className="w-full h-full object-cover rounded-lg transition-transform duration-500 group-hover:scale-110"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                    <div className="absolute bottom-2 left-2 right-2">
-                                        <p className="text-[10px] text-white/90 font-medium line-clamp-2 leading-tight">
+                                <div
+                                    className="relative aspect-[3/4] glass-card p-1 cursor-pointer overflow-hidden rounded-2xl border-white/5 hover:border-violet-500/30 transition-all duration-500 shadow-lg group-hover:shadow-violet-500/10"
+                                    onClick={() => {
+                                        setPreviewImage(`${apiUrl}${item.imageUrl}`);
+                                        setShowFullSize(true);
+                                    }}
+                                >
+                                    <img
+                                        src={`${apiUrl}${item.imageUrl}`}
+                                        alt={item.prompt}
+                                        className="w-full h-full object-cover rounded-xl transition-transform duration-700 group-hover:scale-105"
+                                    />
+
+                                    {/* Quick Actions Overlay */}
+                                    <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleShare(item.id); }}
+                                            className={`p-2 rounded-full backdrop-blur-md border transition-all hover:scale-110 ${item.isPublic ? 'bg-green-500/20 border-green-500/50 text-green-200' : 'bg-black/40 border-white/10 text-white/70 hover:text-white'}`}
+                                            title={item.isPublic ? "Publicly Shared" : "Share Link"}
+                                        >
+                                            {sharing === item.id ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+                                        </button>
+                                    </div>
+
+                                    {/* Hover info */}
+                                    <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                        <p className="text-[10px] text-white/70 font-medium line-clamp-2 leading-tight mb-2">
                                             {item.prompt}
                                         </p>
+                                    </div>
+                                </div>
+
+                                {/* Summary & Voting */}
+                                <div className="px-1 flex items-center justify-between gap-3">
+                                    <div className="flex-grow min-w-0">
+                                        <h4 className="text-sm font-bold text-white truncate group-hover:text-violet-300 transition-colors">
+                                            {item.summary || "Masterpiece"}
+                                        </h4>
+                                        <p className="text-[10px] text-slate-500 font-medium">
+                                            {new Date(item.createdAt).toLocaleDateString()}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex items-center gap-1 bg-white/5 rounded-full p-1 border border-white/5">
+                                        <button
+                                            onClick={() => handleVote(item.id, 'up')}
+                                            className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-green-400"
+                                        >
+                                            <ThumbsUp className="w-3.5 h-3.5" />
+                                        </button>
+                                        <span className="text-[10px] font-bold text-slate-300 min-w-[12px] text-center">
+                                            {item.votes || 0}
+                                        </span>
+                                        <button
+                                            onClick={() => handleVote(item.id, 'down')}
+                                            className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-red-400"
+                                        >
+                                            <ThumbsDown className="w-3.5 h-3.5" />
+                                        </button>
                                     </div>
                                 </div>
                             </div>

@@ -40,7 +40,8 @@ app.use('/api/*', async (c, next) => {
     path === '/api/auth/verify' ||
     path === '/api/debug' ||
     path.startsWith('/stripe/webhook') ||
-    path.includes('/image/')
+    path.includes('/image/') ||
+    path.startsWith('/api/public/')
 
   if (!isPublic) {
     const authHeader = c.req.header('Authorization')
@@ -220,8 +221,6 @@ app.post('/api/generate', async (c) => {
         }],
         generationConfig: {
           responseModalities: ['IMAGE'],
-          // Optional: Add image size to help with speed if needed
-          // imageConfig: { imageSize: "1K" } 
         }
       })
     })
@@ -251,18 +250,44 @@ app.post('/api/generate', async (c) => {
     return c.json({ error: `AI Generation failed: ${e.message}` }, 500)
   }
 
-  // 5. Store Result to R2
+  // 5. Generate Summary (1-phrase)
+  let summary = prompt
+  try {
+    const geminiSummaryUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${c.env.GEMINI_API_KEY}`
+    const summaryRes = await fetch(geminiSummaryUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          role: 'user',
+          parts: [{ text: `Summarize this image generation prompt into a single short catchy phrase (max 5 words): "${prompt}"` }]
+        }],
+        generationConfig: { maxOutputTokens: 20 }
+      })
+    })
+    if (summaryRes.ok) {
+      const sData = await summaryRes.json() as any
+      summary = sData.candidates?.[0]?.content?.parts?.[0]?.text?.replace(/["\n\r]/g, '').trim() || prompt
+    }
+  } catch (se) {
+    console.error("Summary generation failed:", se)
+  }
+
+  // 6. Store Result to R2
   await c.env.BUCKET.put(resultPath, aiImage)
 
-  // 6. Record Generation in Firestore
+  // 7. Record Generation in Firestore
   await firebase.firestore('PATCH', `generations/${genId}`, {
     fields: {
       userId: { stringValue: user.sub },
       originalPath: { stringValue: uploadPath },
       resultPath: { stringValue: resultPath },
       prompt: { stringValue: prompt },
+      summary: { stringValue: summary },
       createdAt: { timestampValue: new Date().toISOString() },
-      status: { stringValue: 'completed' }
+      status: { stringValue: 'completed' },
+      votes: { integerValue: 0 },
+      isPublic: { booleanValue: false }
     }
   })
 
@@ -270,7 +295,8 @@ app.post('/api/generate', async (c) => {
     status: 'success',
     genId,
     remainingCredits: credits - 1,
-    imageUrl: `/api/image/${encodeURIComponent(resultPath)}`
+    imageUrl: `/api/image/${encodeURIComponent(resultPath)}`,
+    summary
   })
 })
 
@@ -384,14 +410,85 @@ app.get('/api/generations', async (c) => {
       generations: results.map(g => ({
         id: g.id,
         prompt: g.prompt?.stringValue,
+        summary: g.summary?.stringValue || g.prompt?.stringValue?.substring(0, 30),
         imageUrl: `/api/image/${encodeURIComponent(g.resultPath?.stringValue)}`,
-        createdAt: g.createdAt?.timestampValue
+        createdAt: g.createdAt?.timestampValue,
+        votes: parseInt(g.votes?.integerValue || '0'),
+        isPublic: g.isPublic?.booleanValue || false
       }))
     })
   } catch (e: any) {
     console.error('History fetch failed:', e.message)
     return c.json({ error: 'Failed to fetch history', details: e.message }, 500)
   }
+})
+
+// Vote on generation
+app.post('/api/generations/:id/vote', async (c) => {
+  const id = c.req.param('id')
+  const { type } = await c.req.json() as { type: 'up' | 'down' }
+  const firebase = c.get('firebase')
+
+  const gen: any = await firebase.firestore('GET', `generations/${id}`)
+  if (!gen) return c.json({ error: 'Not found' }, 404)
+
+  const currentVotes = parseInt(gen.fields?.votes?.integerValue || '0')
+  const newVotes = type === 'up' ? currentVotes + 1 : currentVotes - 1
+
+  await firebase.firestore('PATCH', `generations/${id}?updateMask.fieldPaths=votes`, {
+    fields: { votes: { integerValue: newVotes } }
+  })
+
+  return c.json({ status: 'ok', votes: newVotes })
+})
+
+// Toggle public sharing
+app.post('/api/generations/:id/share', async (c) => {
+  const id = c.req.param('id')
+  const firebase = c.get('firebase')
+
+  const gen: any = await firebase.firestore('GET', `generations/${id}`)
+  if (!gen) return c.json({ error: 'Not found' }, 404)
+
+  const isPublic = !gen.fields?.isPublic?.booleanValue
+
+  await firebase.firestore('PATCH', `generations/${id}?updateMask.fieldPaths=isPublic`, {
+    fields: { isPublic: { booleanValue: isPublic } }
+  })
+
+  return c.json({ status: 'ok', isPublic })
+})
+
+// Public access to shared generation
+app.get('/api/public/share/:id', async (c) => {
+  const id = c.req.param('id')
+  const firebase = new Firebase(c.env)
+
+  const gen: any = await firebase.firestore('GET', `generations/${id}`)
+  if (!gen || !gen.fields?.isPublic?.booleanValue) {
+    return c.json({ error: 'Generation not found or not public' }, 404)
+  }
+
+  return c.json({
+    id,
+    summary: gen.fields?.summary?.stringValue || gen.fields?.prompt?.stringValue?.substring(0, 30),
+    imageUrl: `/api/public/image/${encodeURIComponent(gen.fields?.resultPath?.stringValue)}`,
+    createdAt: gen.fields?.createdAt?.timestampValue
+  })
+})
+
+// Public image proxy
+app.get('/api/public/image/:path', async (c) => {
+  const path = c.req.param('path')
+  const object = await c.env.BUCKET.get(path)
+  if (!object) return c.text('Not found', 404)
+
+  const headers = new Headers()
+  object.writeHttpMetadata(headers)
+  headers.set('etag', object.httpEtag)
+  headers.set('Cache-Control', 'public, max-age=31536000')
+
+  return new Response(object.body, { headers })
 })
 
 // Serve Image helper

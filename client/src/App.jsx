@@ -1,9 +1,16 @@
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Login } from './components/Login';
 import { Dashboard } from './components/Dashboard';
+import { ShareView } from './components/ShareView';
 
 function AppContent() {
   const { user, loading } = useAuth();
+  const path = window.location.pathname;
+
+  if (path.startsWith('/share/')) {
+    const genId = path.split('/share/')[1];
+    return <ShareView genId={genId} />;
+  }
 
   if (loading) {
     return (
