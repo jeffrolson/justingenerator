@@ -9,7 +9,7 @@ export const getStripe = (env: Env) => {
         throw new Error('Missing STRIPE_SECRET_KEY')
     }
     return new Stripe(env.STRIPE_SECRET_KEY, {
-        apiVersion: '2024-12-18.acacia', // Use latest or pinned version
+        apiVersion: '2025-12-15.clover',
         httpClient: Stripe.createFetchHttpClient(), // Important for Workers
     })
 }

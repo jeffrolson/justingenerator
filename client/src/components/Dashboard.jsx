@@ -93,9 +93,95 @@ export function Dashboard() {
         }
     };
 
+    const [activeJob, setActiveJob] = useState(null);
+
+    // Placeholder for Firestore instance if you were using the SDK directly, 
+    // but since we want "real-time" and this is a serverless demo, 
+    // we'll implement a polling mechanism or handle onSnapshot if the user has firebase/firestore installed.
+    // The previous implementation used Firebase SDK in contexts/AuthContext.
+
+    useEffect(() => {
+        if (!user) return;
+
+        // In a real app we'd use onSnapshot, here we pollute a bit to check for active jobs
+        const interval = setInterval(async () => {
+            if (activeJob && activeJob.status === 'completed') {
+                clearInterval(interval);
+                fetchHistory();
+                return;
+            }
+
+            try {
+                const token = await user.getIdToken();
+                // We'll add an endpoint to get active jobs or just use query
+                // For simplicity, let's assume we can fetch history and see the latest job status
+                // Or we can add a simple /api/jobs/active endpoint
+                const res = await fetch(`${apiUrl}/api/jobs/active`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.job) {
+                        setActiveJob(data.job);
+                        if (data.job.status === 'completed') fetchHistory();
+                    } else {
+                        setActiveJob(null);
+                    }
+                }
+            } catch (e) {
+                console.error("Job check failed:", e);
+            }
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [user, activeJob?.status]);
+
     const handleBuyCredits = async () => {
-        // TODO: Call /api/stripe/checkout
-        alert("Stripe integration coming next!");
+        if (!file) {
+            alert("Please select a photo first to generate a batch!");
+            return;
+        }
+
+        setGenerating(true);
+        try {
+            const token = await user.getIdToken();
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('prompt', prompt || 'A stylized portrait');
+
+            // 1. Pre-upload image so we have a path for the webhook
+            const uploadRes = await fetch(`${apiUrl}/api/upload-only`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+
+            if (!uploadRes.ok) throw new Error("Upload failed");
+            const { path } = await uploadRes.json();
+
+            // 2. Start Checkout
+            const stripeRes = await fetch(`${apiUrl}/api/stripe/checkout`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    priceId: 'price_1QfV3vLpG8S7zK7v8L9j2A1B', // Example ID
+                    originalPath: path,
+                    prompt: prompt || 'A stylized portrait'
+                })
+            });
+
+            if (!stripeRes.ok) throw new Error("Checkout failed");
+            const { url } = await stripeRes.json();
+            window.location.href = url;
+
+        } catch (e) {
+            setError(e.message);
+        } finally {
+            setGenerating(false);
+        }
     };
 
     return (
@@ -205,15 +291,75 @@ export function Dashboard() {
                                 )}
                             </span>
                         </button>
+
+                        <div className="flex items-center gap-4 py-2">
+                            <div className="h-px bg-white/10 flex-grow"></div>
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">or</span>
+                            <div className="h-px bg-white/10 flex-grow"></div>
+                        </div>
+
+                        <button
+                            onClick={handleBuyCredits}
+                            disabled={generating || !file}
+                            className="w-full py-4 rounded-xl border border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/20 text-violet-200 font-bold transition-all flex items-center justify-center gap-2 group overflow-hidden relative"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-shimmer p-1"></div>
+                            <Package className="w-5 h-5" />
+                            Generate Pro Batch (10 Images)
+                        </button>
+                        <p className="text-center text-[10px] text-slate-500 font-medium">✨ Pro Batch uses advanced styles and saves to your collection</p>
                     </div>
                 </section>
 
-                {/* Result Section */}
+                {/* Result Section/Active Job Section */}
                 <section className="glass-card p-1 flex flex-col items-center justify-center min-h-[500px] relative overflow-hidden">
                     {/* Background decor */}
                     <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-50 pointer-events-none"></div>
 
-                    {generating ? (
+                    {activeJob ? (
+                        <div className="w-full p-8 space-y-8 relative z-10 animate-fade-in">
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-end">
+                                    <div className="space-y-1">
+                                        <h4 className="text-xl font-bold text-white flex items-center gap-2">
+                                            <span className="w-2 h-2 bg-violet-500 rounded-full animate-ping"></span>
+                                            Batch Generation
+                                        </h4>
+                                        <p className="text-slate-400 text-sm">Processing your masterpiece collection</p>
+                                    </div>
+                                    <span className="text-violet-400 font-bold text-2xl">
+                                        {Math.round((activeJob.completed / activeJob.total) * 100)}%
+                                    </span>
+                                </div>
+
+                                <div className="h-4 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 p-1">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-violet-600 via-fuchsia-500 to-violet-600 bg-[length:200%_100%] animate-shimmer rounded-full transition-all duration-1000 ease-out"
+                                        style={{ width: `${(activeJob.completed / activeJob.total) * 100}%` }}
+                                    ></div>
+                                </div>
+                                <p className="text-center text-xs text-slate-500 font-medium tracking-widest uppercase">
+                                    {activeJob.completed} of {activeJob.total} images completed
+                                </p>
+                            </div>
+
+                            {activeJob.results && activeJob.results.length > 0 && (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 animate-fade-in-up">
+                                    {activeJob.results.slice().reverse().map((url, i) => (
+                                        <div key={i} className="aspect-square rounded-lg overflow-hidden border border-white/10 glass shadow-2xl relative group">
+                                            <img src={`${apiUrl}${url}`} alt="Result" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                        </div>
+                                    ))}
+                                    {[...Array(activeJob.total - activeJob.results.length)].map((_, i) => (
+                                        <div key={`blank-${i}`} className="aspect-square rounded-lg bg-white/5 border border-white/5 animate-pulse flex items-center justify-center">
+                                            <ImageIcon className="w-6 h-6 text-white/10" />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ) : generating ? (
                         <div className="text-center space-y-8 relative z-10 animate-fade-in-up">
                             <div className="cyber-loader mx-auto"></div>
                             <div className="space-y-2">

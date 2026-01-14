@@ -274,6 +274,76 @@ app.post('/api/generate', async (c) => {
   })
 })
 
+// Upload-only: Pre-upload for batch jobs
+app.post('/api/upload-only', async (c) => {
+  const user = c.get('user')
+  const body = await c.req.parseBody()
+  const file = body['image'] as File
+
+  if (!file) return c.json({ error: 'No image' }, 400)
+
+  const fileExt = file.name.split('.').pop() || 'jpg'
+  const uploadId = crypto.randomUUID()
+  const path = `uploads/${user.sub}/pending/${uploadId}.${fileExt}`
+
+  await c.env.BUCKET.put(path, await file.arrayBuffer(), {
+    customMetadata: { userId: user.sub, type: 'pending' }
+  })
+
+  return c.json({ path })
+})
+
+// Active Job Search
+app.get('/api/jobs/active', async (c) => {
+  const user = c.get('user')
+  const firebase = c.get('firebase')
+
+  try {
+    const results = await firebase.query('jobs', {
+      where: {
+        compositeFilter: {
+          op: 'AND',
+          filters: [
+            {
+              fieldFilter: {
+                field: { fieldPath: 'userId' },
+                op: 'EQUAL',
+                value: { stringValue: user.sub }
+              }
+            },
+            {
+              fieldFilter: {
+                field: { fieldPath: 'status' },
+                op: 'EQUAL',
+                value: { stringValue: 'processing' }
+              }
+            }
+          ]
+        }
+      },
+      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+      limit: 1
+    })
+
+    if (results.length > 0) {
+      const job = results[0]
+      return c.json({
+        job: {
+          id: job.id,
+          status: job.status?.stringValue,
+          completed: parseInt(job.completed_images?.integerValue || '0'),
+          total: parseInt(job.total_images?.integerValue || '10'),
+          results: job.results?.arrayValue?.values?.map((v: any) => v.stringValue) || []
+        }
+      })
+    }
+
+    return c.json({ job: null })
+  } catch (e) {
+    return c.json({ error: 'Failed to fetch active job' }, 500)
+  }
+})
+
 // Fetch history
 app.get('/api/generations', async (c) => {
   const user = c.get('user')
@@ -354,7 +424,9 @@ app.post('/api/stripe/checkout', async (c) => {
       success_url: `${c.req.header('origin')}/success`,
       cancel_url: `${c.req.header('origin')}/cancel`,
       metadata: {
-        userId: user.sub
+        userId: user.sub,
+        originalPath: (await c.req.json() as any).originalPath,
+        prompt: (await c.req.json() as any).prompt
       }
     })
     return c.json({ url: session.url })
@@ -377,17 +449,29 @@ app.post('/api/stripe/webhook', async (c) => {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as any
       const userId = session.metadata?.userId
+      const originalPath = session.metadata?.originalPath
+      const prompt = session.metadata?.prompt || 'A stylized portrait'
 
-      if (userId) {
+      if (userId && originalPath) {
         const firebase = new Firebase(c.env)
-        const userDoc: any = await firebase.firestore('GET', `users/${userId}`)
-        const currentCredits = parseInt(userDoc?.fields?.credits?.integerValue || '0')
+        const jobId = crypto.randomUUID()
 
-        await firebase.firestore('PATCH', `users/${userId}?updateMask.fieldPaths=credits`, {
+        // 1. Create Job record
+        await firebase.firestore('PATCH', `jobs/${jobId}`, {
           fields: {
-            credits: { integerValue: currentCredits + 50 }
+            userId: { stringValue: userId },
+            status: { stringValue: 'processing' },
+            total_images: { integerValue: 10 },
+            completed_images: { integerValue: 0 },
+            results: { arrayValue: { values: [] } },
+            originalPath: { stringValue: originalPath },
+            prompt: { stringValue: prompt },
+            createdAt: { timestampValue: new Date().toISOString() }
           }
         })
+
+        // 2. Start Async Batch Process
+        c.executionCtx.waitUntil(processBatch(c.env, firebase, jobId, userId, originalPath, prompt))
       }
     }
 
@@ -396,5 +480,94 @@ app.post('/api/stripe/webhook', async (c) => {
     return c.text(`Webhook Error: ${e.message}`, 400)
   }
 })
+
+
+async function processBatch(env: Bindings, firebase: Firebase, jobId: string, userId: string, originalPath: string, basePrompt: string) {
+  const prompts = [
+    `${basePrompt}, cinematic lighting, masterpiece`,
+    `${basePrompt}, digital art style, vibrant`,
+    `${basePrompt}, oil painting style, textured`,
+    `${basePrompt}, cyberpunk neon aesthetic`,
+    `${basePrompt}, sketch drawing, hand-drawn`,
+    `${basePrompt}, anime style, clean lines`,
+    `${basePrompt}, 3d render, unreal engine 5, octane`,
+    `${basePrompt}, black and white, dramatic shadows`,
+    `${basePrompt}, watercolor painting, soft`,
+    `${basePrompt}, pop art style, bold colors`
+  ]
+
+  const results: string[] = []
+
+  try {
+    // Get the original image from R2 once
+    const object = await env.BUCKET.get(originalPath)
+    if (!object) throw new Error("Original image not found in R2")
+    const originalBuffer = await object.arrayBuffer()
+    const base64Image = Buffer.from(originalBuffer).toString('base64')
+
+    for (let i = 0; i < prompts.length; i++) {
+      try {
+        const prompt = prompts[i]
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${env.GEMINI_API_KEY}`
+
+        const response = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              role: 'user',
+              parts: [
+                { text: prompt },
+                { inlineData: { mimeType: 'image/jpeg', data: base64Image } }
+              ]
+            }],
+            generationConfig: { responseModalities: ['IMAGE'] }
+          })
+        })
+
+        if (!response.ok) continue
+
+        const data = await response.json() as any
+        const imagePart = data.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData)
+        if (!imagePart) continue
+
+        const aiImage = Buffer.from(imagePart.inlineData.data, 'base64')
+        const genId = crypto.randomUUID()
+        const resultPath = `generations/${userId}/batch_${jobId}/${genId}.png`
+
+        // Upload to R2
+        await env.BUCKET.put(resultPath, aiImage)
+        results.push(`/api/image/${encodeURIComponent(resultPath)}`)
+
+        // Update Job in Firestore
+        await firebase.firestore('PATCH', `jobs/${jobId}?updateMask.fieldPaths=completed_images&updateMask.fieldPaths=results`, {
+          fields: {
+            completed_images: { integerValue: i + 1 },
+            results: {
+              arrayValue: {
+                values: results.map(url => ({ stringValue: url }))
+              }
+            }
+          }
+        })
+
+        // Artificial delay if needed to avoid rate limits, though Gemini flash is fast
+      } catch (e) {
+        console.error(`Batch generation error at index ${i}:`, e)
+      }
+    }
+
+    // Final status update
+    await firebase.firestore('PATCH', `jobs/${jobId}?updateMask.fieldPaths=status`, {
+      fields: { status: { stringValue: 'completed' } }
+    })
+
+  } catch (e) {
+    console.error("Batch job failed fatal:", e)
+    await firebase.firestore('PATCH', `jobs/${jobId}?updateMask.fieldPaths=status`, {
+      fields: { status: { stringValue: 'failed' } }
+    })
+  }
+}
 
 export default app
