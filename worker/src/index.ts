@@ -82,6 +82,7 @@ app.use('/api/*', async (c, next) => {
   const isPublic = path === '/' ||
     path === '/api/auth/verify' ||
     path === '/api/debug' ||
+    path === '/api/presets' ||
     path.startsWith('/stripe/webhook') ||
     path.includes('/image/') ||
     path.startsWith('/api/public/')
