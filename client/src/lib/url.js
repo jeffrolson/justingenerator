@@ -11,9 +11,14 @@ export const getImageUrl = (path, apiUrl) => {
         return path.replace('http//', 'http://').replace('https//', 'https://');
     }
 
-    // Ensure apiUrl doesn't have a trailing slash and path has exactly one leading slash
+    // Ensure apiUrl doesn't have a trailing slash
     const base = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+
+    // Ensure path has exactly one leading slash
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
 
-    return `${base}${normalizedPath}`;
+    const finalUrl = `${base}${normalizedPath}`;
+
+    // Final emergency fix for missing protocol colon
+    return finalUrl.replace(/https\/\//g, 'https://').replace(/http\/\//g, 'http://');
 };
