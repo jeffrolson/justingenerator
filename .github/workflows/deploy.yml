@@ -1,16 +1,15 @@
-name: Deploy Worker
+name: Deploy
 
 on:
   push:
     branches:
       - main
-    paths:
-      - 'worker/**'
 
 jobs:
-  deploy:
+  deploy-worker:
     runs-on: ubuntu-latest
-    name: Deploy
+    name: Deploy Worker
+    if: "contains(github.event.head_commit.message, '[worker]') || github.event_name == 'workflow_dispatch' || true" # Simplified for now
     steps:
       - uses: actions/checkout@v4
       - name: Deploy
@@ -19,3 +18,23 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: 'worker'
           command: deploy
+
+  deploy-client:
+    runs-on: ubuntu-latest
+    name: Deploy Client
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: npm install
+        working-directory: client
+      - name: Build
+        run: npm run build
+        working-directory: client
+        env:
+          VITE_API_URL: https://worker.jeffrolson1.workers.dev
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: 'client'
+          command: pages deploy dist --project-name=justingenerator-client
