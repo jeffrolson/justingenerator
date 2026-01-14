@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Sparkles, Download, Calendar, ThumbsUp } from 'lucide-react';
+import { getImageUrl } from '../lib/url';
 
 export function ShareView({ genId }) {
     const [data, setData] = useState(null);
@@ -99,7 +100,7 @@ export function ShareView({ genId }) {
                     {/* Main Image Container */}
                     <div className="relative aspect-[3/4] bg-slate-900 overflow-hidden">
                         <img
-                            src={`${apiUrl}/api/public/image/${encodeURIComponent(data.resultPath)}`}
+                            src={getImageUrl(`/api/public/image/${encodeURIComponent(data.resultPath)}`, apiUrl)}
                             alt={data.summary}
                             className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                         />

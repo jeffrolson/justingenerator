@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../lib/firebase'; // Need auth for getToken
+import { getImageUrl } from '../lib/url';
 import {
     Sparkles,
     Image as ImageIcon,
@@ -47,7 +48,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
 
     const fetchPresets = async () => {
         try {
-            const res = await fetch(`${apiUrl}/api/presets`);
+            const res = await fetch(`${apiUrl} /api/presets`);
             if (res.ok) {
                 const data = await res.json();
                 setPresets(data.presets || []);
@@ -63,10 +64,10 @@ export function Dashboard({ initialRemix, onClearRemix }) {
         setLoadingHistory(true);
         try {
             const token = await user.getIdToken();
-            let url = `${apiUrl}/api/generations?filter=${filter}`;
-            if (tag) url += `&tag=${encodeURIComponent(tag)}`;
+            let url = `${apiUrl} /api/generations ? filter = ${filter} `;
+            if (tag) url += `& tag=${encodeURIComponent(tag)} `;
             const res = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${token} ` }
             });
             if (res.ok) {
                 const data = await res.json();
@@ -116,10 +117,10 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                 formData.append('remixFrom', remixSource.id);
             }
 
-            const res = await fetch(`${apiUrl}/api/generate`, {
+            const res = await fetch(`${apiUrl} /api/generate`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token} `
                 },
                 body: formData
             });
@@ -130,7 +131,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
             }
 
             const data = await res.json();
-            const newImageUrl = `${apiUrl}${data.imageUrl}`;
+            const newImageUrl = getImageUrl(data.imageUrl, apiUrl);
             setResult(newImageUrl);
 
             // Add to history locally for immediate feedback
@@ -176,8 +177,8 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                 // We'll add an endpoint to get active jobs or just use query
                 // For simplicity, let's assume we can fetch history and see the latest job status
                 // Or we can add a simple /api/jobs/active endpoint
-                const res = await fetch(`${apiUrl}/api/jobs/active`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                const res = await fetch(`${apiUrl} /api/jobs / active`, {
+                    headers: { 'Authorization': `Bearer ${token} ` }
                 });
                 if (res.ok) {
                     const data = await res.json();
@@ -212,9 +213,9 @@ export function Dashboard({ initialRemix, onClearRemix }) {
             }
 
             // 1. Pre-upload image so we have a path for the webhook
-            const uploadRes = await fetch(`${apiUrl}/api/upload-only`, {
+            const uploadRes = await fetch(`${apiUrl} /api/upload - only`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
+                headers: { 'Authorization': `Bearer ${token} ` },
                 body: formData
             });
 
@@ -222,10 +223,10 @@ export function Dashboard({ initialRemix, onClearRemix }) {
             const { path } = await uploadRes.json();
 
             // 2. Start Checkout
-            const stripeRes = await fetch(`${apiUrl}/api/stripe/checkout`, {
+            const stripeRes = await fetch(`${apiUrl} /api/stripe / checkout`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Authorization': `Bearer ${token} `,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
@@ -249,7 +250,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
     const handleVote = async (id, type) => {
         try {
             const token = await user.getIdToken();
-            const res = await fetch(`${apiUrl}/api/generations/${id}/vote`, {
+            const res = await fetch(`${apiUrl} /api/generations / ${id}/vote`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -410,7 +411,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                         {remixSource ? (
                             <div className="p-4 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex gap-4 items-center animate-fade-in-up">
                                 <div className="w-16 h-16 rounded-lg overflow-hidden border border-white/10 shrink-0">
-                                    <img src={remixSource.imageUrl.startsWith('http') ? remixSource.imageUrl : `${apiUrl}${remixSource.imageUrl}`} alt="Remix Source" className="w-full h-full object-cover" />
+                                    <img src={getImageUrl(remixSource.imageUrl, apiUrl)} alt="Remix Source" className="w-full h-full object-cover" />
                                 </div>
                                 <div className="flex-grow">
                                     <p className="text-sm font-bold text-violet-300">Remixing Original Prompt</p>
@@ -552,7 +553,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 animate-fade-in-up">
                                     {activeJob.results.slice().reverse().map((url, i) => (
                                         <div key={i} className="aspect-square rounded-lg overflow-hidden border border-white/10 glass shadow-2xl relative group">
-                                            <img src={`${apiUrl}${url}`} alt="Result" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                            <img src={getImageUrl(url, apiUrl)} alt="Result" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                         </div>
                                     ))}
@@ -678,7 +679,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                     }}
                                 >
                                     <img
-                                        src={item.imageUrl.startsWith('http') ? item.imageUrl : `${apiUrl}${item.imageUrl}`}
+                                        src={getImageUrl(item.imageUrl, apiUrl)}
                                         alt={item.prompt}
                                         className="w-full h-full object-cover rounded-xl transition-transform duration-700 group-hover:scale-105"
                                     />

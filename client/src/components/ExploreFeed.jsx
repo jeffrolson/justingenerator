@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Sparkles, Heart, Bookmark, ArrowRight, Layers } from 'lucide-react';
+import { getImageUrl } from '../lib/url';
 
 export function ExploreFeed({ onRemix }) {
     const { user } = useAuth();
@@ -100,7 +101,7 @@ export function ExploreFeed({ onRemix }) {
                         className="group relative aspect-[3/4] rounded-2xl overflow-hidden bg-gray-900 border border-white/5 hover:border-violet-500/50 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-violet-500/20"
                     >
                         <img
-                            src={item.imageUrl.startsWith('http') ? item.imageUrl : `${apiUrl}${item.imageUrl}`}
+                            src={getImageUrl(item.imageUrl, apiUrl)}
                             alt={item.summary}
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                         />
