@@ -157,11 +157,14 @@ export function ShareView({ genId }) {
                         </div>
 
                         <button
-                            onClick={() => window.location.href = '/'}
-                            className="w-full mt-8 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black py-4 px-8 rounded-2xl transition-all shadow-lg shadow-violet-600/20 active:scale-[0.98] flex items-center justify-center gap-2 border border-white/10"
+                            onClick={() => {
+                                localStorage.setItem('redirectAction', JSON.stringify({ type: 'remix', id: genId }));
+                                window.location.href = '/';
+                            }}
+                            className="w-full mt-8 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black py-5 px-8 rounded-2xl transition-all shadow-xl shadow-violet-600/30 active:scale-[0.98] flex items-center justify-center gap-3 border border-white/10 group/cta"
                         >
-                            Generate Your Own
-                            <Sparkles className="w-5 h-5" />
+                            <span className="text-lg">Remix this style on me</span>
+                            <Sparkles className="w-6 h-6 group-hover/cta:animate-pulse" />
                         </button>
                     </div>
                 </div>
