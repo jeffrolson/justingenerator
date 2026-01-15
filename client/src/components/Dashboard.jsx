@@ -44,6 +44,16 @@ export function Dashboard({ initialRemix, onClearRemix }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTag, setActiveTag] = useState(null);
 
+    // Lock scroll when modal is open
+    useEffect(() => {
+        if (showFullSize || sharingItem) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => { document.body.style.overflow = 'unset'; };
+    }, [showFullSize, sharingItem]);
+
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
     const fetchPresets = async () => {
@@ -358,419 +368,424 @@ export function Dashboard({ initialRemix, onClearRemix }) {
     };
 
     return (
-        <div className="w-full max-w-5xl space-y-8 animate-fade-in-up px-4 py-8">
-            <header className="flex justify-between items-center glass-panel p-6 rounded-2xl">
+        <div className="w-full max-w-5xl px-4 py-8">
+            <header className="flex flex-col sm:flex-row justify-between items-center glass-panel p-4 md:p-6 rounded-2xl gap-4 md:gap-6 animate-fade-in-up">
                 <div className="flex items-center gap-3">
                     <div className="bg-violet-600 p-2 rounded-lg shadow-lg shadow-violet-500/30">
                         <Sparkles className="w-6 h-6 text-white" />
                     </div>
-                    <h2 className="text-2xl font-bold text-white tracking-tight">Justin Generator</h2>
+                    <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">Justin Generator</h2>
                 </div>
 
-                <div className="flex items-center gap-6">
+                <div className="flex flex-wrap items-center justify-center gap-3 md:gap-6">
                     <button
                         onClick={() => window.location.href = '/explore'}
-                        className="text-slate-400 hover:text-white transition-colors flex items-center gap-2 text-sm font-bold uppercase tracking-wider hover:scale-105"
+                        className="text-slate-400 hover:text-white transition-colors flex items-center gap-2 text-[10px] md:text-sm font-bold uppercase tracking-wider hover:scale-105"
                     >
                         <ExternalLink className="w-4 h-4" />
-                        Public Gallery
+                        <span className="hidden xs:inline">Public Gallery</span>
+                        <span className="xs:hidden">Gallery</span>
                     </button>
-                    <div className="flex items-center gap-3 bg-white/5 pl-5 pr-2 py-1.5 rounded-full border border-white/10 group/credits">
+                    <div className="flex items-center gap-2 md:gap-3 bg-white/5 pl-3 md:pl-5 pr-1 md:pr-2 py-1 md:py-1.5 rounded-full border border-white/10 group/credits">
                         <div className="flex items-center gap-2">
-                            <span className="text-violet-200 text-[10px] font-bold uppercase tracking-widest opacity-60">Credits</span>
-                            <span className="text-white font-black text-xl tabular-nums">{credits}</span>
+                            <span className="text-violet-200 text-[8px] md:text-[10px] font-bold uppercase tracking-widest opacity-60">Credits</span>
+                            <span className="text-white font-black text-lg md:text-xl tabular-nums">{credits}</span>
                         </div>
-                        <div className="h-6 w-px bg-white/10 mx-1"></div>
+                        <div className="h-4 md:h-6 w-px bg-white/10 mx-0.5 md:mx-1"></div>
                         <button
                             onClick={() => window.location.href = '/pricing'}
-                            className="bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-full transition-all hover:scale-105 flex items-center gap-1.5 shadow-lg shadow-violet-600/20"
+                            className="bg-violet-600 hover:bg-violet-500 text-white px-2 md:px-3 py-1 md:py-1.5 rounded-full transition-all hover:scale-105 flex items-center gap-1.5 shadow-lg shadow-violet-600/20"
                             title="Add Credits"
                         >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span className="text-[10px] font-bold uppercase tracking-wider">Get More</span>
+                            <Plus className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                            <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider">Add</span>
                         </button>
                     </div>
                     <button
                         onClick={logout}
-                        className="text-slate-400 hover:text-white transition-colors flex items-center gap-2 text-sm font-medium"
+                        className="text-slate-400 hover:text-white transition-colors flex items-center gap-2 text-[10px] md:text-sm font-medium"
                     >
                         <LogOut className="w-4 h-4" />
-                        Sign Out
+                        <span className="hidden sm:inline">Sign Out</span>
                     </button>
                 </div>
             </header>
 
-            <main className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                {/* Input Section */}
-                <section className="glass-card p-8 space-y-8 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-violet-600/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none group-hover:bg-violet-600/20 transition-all duration-700"></div>
+            <div className="space-y-8 mt-8 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
 
-                    <div>
-                        <h3 className="text-2xl font-bold text-white mb-2">Create Magic</h3>
-                        <p className="text-slate-400 text-sm">Upload a photo and let AI transform it into art.</p>
-                    </div>
+                <main className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                    {/* Input Section */}
+                    <section className="glass-card p-8 space-y-8 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-violet-600/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none group-hover:bg-violet-600/20 transition-all duration-700"></div>
 
-                    <div className="space-y-4">
-                        <label className="text-sm font-medium text-violet-200 ml-1">
-                            {remixSource ? 'Remixing Style' : 'Choose a Style'}
-                        </label>
+                        <div>
+                            <h3 className="text-2xl font-bold text-white mb-2">Create Magic</h3>
+                            <p className="text-slate-400 text-sm">Upload a photo and let AI transform it into art.</p>
+                        </div>
 
-                        {remixSource ? (
-                            <div className="p-4 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex gap-4 items-center animate-fade-in-up">
-                                <div className="w-16 h-16 rounded-lg overflow-hidden border border-white/10 shrink-0">
-                                    <img src={getImageUrl(remixSource.imageUrl, apiUrl)} alt="Remix Source" className="w-full h-full object-cover" />
+                        <div className="space-y-4">
+                            <label className="text-sm font-medium text-violet-200 ml-1">
+                                {remixSource ? 'Remixing Style' : 'Choose a Style'}
+                            </label>
+
+                            {remixSource ? (
+                                <div className="p-4 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex gap-4 items-center animate-fade-in-up">
+                                    <div className="w-16 h-16 rounded-lg overflow-hidden border border-white/10 shrink-0">
+                                        <img src={getImageUrl(remixSource.imageUrl, apiUrl)} alt="Remix Source" className="w-full h-full object-cover" />
+                                    </div>
+                                    <div className="flex-grow">
+                                        <p className="text-sm font-bold text-violet-300">Remixing Original Prompt</p>
+                                        <p className="text-xs text-slate-400">The underlying prompt is hidden to maintain the magic.</p>
+                                    </div>
+                                    <button
+                                        onClick={() => { setRemixSource(null); onClearRemix?.(); }}
+                                        className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
                                 </div>
-                                <div className="flex-grow">
-                                    <p className="text-sm font-bold text-violet-300">Remixing Original Prompt</p>
-                                    <p className="text-xs text-slate-400">The underlying prompt is hidden to maintain the magic.</p>
+                            ) : (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    {presets.map((preset) => (
+                                        <button
+                                            key={preset.id}
+                                            onClick={() => setSelectedPresetId(preset.id)}
+                                            className={`group relative aspect-[4/3] rounded-xl overflow-hidden border-2 transition-all ${selectedPresetId === preset.id ? 'border-violet-500 ring-2 ring-violet-500/50' : 'border-white/5 hover:border-white/20'}`}
+                                        >
+                                            <img src={getImageUrl(preset.sampleUrl, apiUrl)} alt={preset.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                            <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity ${selectedPresetId === preset.id ? 'opacity-100' : 'opacity-60 group-hover:opacity-80'}`}></div>
+                                            <div className="absolute inset-0 flex flex-col justify-end p-3">
+                                                <p className="text-[10px] font-bold text-white uppercase tracking-wider">{preset.title}</p>
+                                                {selectedPresetId === preset.id && (
+                                                    <div className="absolute top-2 right-2 bg-violet-600 rounded-full p-1 shadow-lg">
+                                                        <Check className="w-3 h-3 text-white" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </button>
+                                    ))}
                                 </div>
-                                <button
-                                    onClick={() => { setRemixSource(null); onClearRemix?.(); }}
-                                    className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
+                            )}
+                        </div>
+
+                        <div
+                            className={`border-2 border-dashed border-white/10 rounded-2xl p-8 text-center transition-all duration-300 relative overflow-hidden ${file ? 'bg-violet-500/10 border-violet-500/30' : 'hover:bg-white/5 hover:border-violet-500/30'} cursor-pointer`}
+                        >
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => setFile(e.target.files[0])}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            />
+                            <div className="space-y-4 pointer-events-none relative z-0 flex flex-col items-center justify-center">
+                                <div className={`p-4 rounded-full bg-white/5 transition-transform duration-300 ${!file && 'group-hover:scale-110'}`}>
+                                    {file ? <ImageIcon className="w-8 h-8 text-violet-300" /> : <Upload className="w-8 h-8 text-slate-400" />}
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-white font-medium text-lg">
+                                        {file ? file.name : "Upload Photo"}
+                                    </p>
+                                    <p className="text-slate-400 text-sm">
+                                        {file ? "Click to change" : "Drag & drop or click to browse"}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {error && (
+                            <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-xl text-sm flex items-center gap-2 animate-fade-in-up">
+                                <span className="text-lg">⚠️</span>
+                                {error}
+                            </div>
+                        )}
+
+                        <button
+                            onClick={handleGenerate}
+                            disabled={generating || !file || credits < 1}
+                            className={`btn-primary w-full py-4 text-lg font-bold rounded-xl shadow-lg relative overflow-hidden group ${generating || !file || credits < 1 ? 'opacity-70' : ''}`}
+                        >
+                            <span className="relative z-10 flex items-center justify-center gap-2">
+                                {generating ? (
+                                    <>
+                                        <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                        Generating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkles className="w-5 h-5" />
+                                        Generate (1 Credit)
+                                    </>
+                                )}
+                            </span>
+                        </button>
+
+
+                    </section>
+
+                    {/* Result Section/Active Job Section */}
+                    <section className="glass-card p-1 flex flex-col items-center justify-center min-h-[500px] relative overflow-hidden">
+                        {/* Background decor */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-50 pointer-events-none"></div>
+
+                        {activeJob ? (
+                            <div className="w-full p-8 space-y-8 relative z-10 animate-fade-in">
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-end">
+                                        <div className="space-y-1">
+                                            <h4 className="text-xl font-bold text-white flex items-center gap-2">
+                                                <span className="w-2 h-2 bg-violet-500 rounded-full animate-ping"></span>
+                                                Batch Generation
+                                            </h4>
+                                            <p className="text-slate-400 text-sm">Processing your masterpiece collection</p>
+                                        </div>
+                                        <span className="text-violet-400 font-bold text-2xl">
+                                            {Math.round((activeJob.completed / activeJob.total) * 100)}%
+                                        </span>
+                                    </div>
+
+                                    <div className="h-4 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 p-1">
+                                        <div
+                                            className="h-full bg-gradient-to-r from-violet-600 via-fuchsia-500 to-violet-600 bg-[length:200%_100%] animate-shimmer rounded-full transition-all duration-1000 ease-out"
+                                            style={{ width: `${(activeJob.completed / activeJob.total) * 100}%` }}
+                                        ></div>
+                                    </div>
+                                    <p className="text-center text-xs text-slate-500 font-medium tracking-widest uppercase">
+                                        {activeJob.completed} of {activeJob.total} images completed
+                                    </p>
+                                </div>
+
+                                {activeJob.results && activeJob.results.length > 0 && (
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 animate-fade-in-up">
+                                        {activeJob.results.slice().reverse().map((url, i) => (
+                                            <div key={i} className="aspect-square rounded-lg overflow-hidden border border-white/10 glass shadow-2xl relative group">
+                                                <img src={getImageUrl(url, apiUrl)} alt="Result" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                            </div>
+                                        ))}
+                                        {[...Array(activeJob.total - activeJob.results.length)].map((_, i) => (
+                                            <div key={`blank-${i}`} className="aspect-square rounded-lg bg-white/5 border border-white/5 animate-pulse flex items-center justify-center">
+                                                <ImageIcon className="w-6 h-6 text-white/10" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ) : generating ? (
+                            <div className="text-center space-y-8 relative z-10 animate-fade-in-up">
+                                <div className="cyber-loader mx-auto"></div>
+                                <div className="space-y-2">
+                                    <p className="text-white font-bold text-xl tracking-wide">Dreaming...</p>
+                                    <p className="text-violet-300 text-sm animate-pulse">Consulting the neural network</p>
+                                </div>
+                            </div>
+                        ) : result ? (
+                            <div className="w-full h-full max-h-[600px] flex items-center justify-center relative group animate-fade-in-up rounded-2xl overflow-hidden cursor-zoom-in" onClick={() => { setPreviewImage(result); setShowFullSize(true); }}>
+                                <img
+                                    src={result}
+                                    alt="Generated"
+                                    className="max-w-full max-h-full object-contain bg-black/50 backdrop-blur-sm transition-transform duration-500 group-hover:scale-[1.02]"
+                                />
+                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
+                                    <Plus className="w-12 h-12 text-white/80" />
+                                </div>
+                                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-300 md:translate-y-0" onClick={e => e.stopPropagation()}>
+                                    <a
+                                        href={result}
+                                        download="generated.png"
+                                        className="w-full bg-white text-black font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-violet-50 transition-colors shadow-lg shadow-black/50"
+                                    >
+                                        <Download className="w-5 h-5" />
+                                        Download High-Res
+                                    </a>
+                                </div>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                {presets.map((preset) => (
+                            <div className="text-center text-slate-600 space-y-4 relative z-10">
+                                <div className="p-8 rounded-full bg-white/5 inline-flex backdrop-blur-xl border border-white/5 shimmer">
+                                    <ImageIcon className="w-16 h-16 opacity-30" />
+                                </div>
+                                <p className="text-slate-500 font-medium">Your masterpiece will appear here</p>
+                            </div>
+                        )}
+                    </section>
+                </main>
+
+                <section className="mt-16 space-y-8 pb-12">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-white/5 rounded-lg border border-white/10 shadow-inner">
+                                    <ImageIcon className="w-5 h-5 text-violet-400" />
+                                </div>
+                                <h3 className="text-xl font-bold text-white tracking-tight">Gallery</h3>
+                            </div>
+
+                            {/* Search / Tag Filter */}
+                            <div className="relative hidden md:block">
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Search by tag..."
+                                    className="bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 w-48 transition-all focus:w-64"
+                                />
+                                {searchQuery && (
                                     <button
-                                        key={preset.id}
-                                        onClick={() => setSelectedPresetId(preset.id)}
-                                        className={`group relative aspect-[4/3] rounded-xl overflow-hidden border-2 transition-all ${selectedPresetId === preset.id ? 'border-violet-500 ring-2 ring-violet-500/50' : 'border-white/5 hover:border-white/20'}`}
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
                                     >
-                                        <img src={getImageUrl(preset.sampleUrl, apiUrl)} alt={preset.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                        <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity ${selectedPresetId === preset.id ? 'opacity-100' : 'opacity-60 group-hover:opacity-80'}`}></div>
-                                        <div className="absolute inset-0 flex flex-col justify-end p-3">
-                                            <p className="text-[10px] font-bold text-white uppercase tracking-wider">{preset.title}</p>
-                                            {selectedPresetId === preset.id && (
-                                                <div className="absolute top-2 right-2 bg-violet-600 rounded-full p-1 shadow-lg">
-                                                    <Check className="w-3 h-3 text-white" />
-                                                </div>
-                                            )}
-                                        </div>
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 items-center">
+                            {activeTag && (
+                                <div className="flex items-center gap-2 bg-violet-600/20 text-violet-300 px-3 py-1 rounded-full border border-violet-500/30 text-xs font-bold animate-fade-in">
+                                    Tag: {activeTag}
+                                    <button onClick={() => setActiveTag(null)} className="hover:text-white">
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            )}
+                            <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+                                {['my', 'likes', 'bookmarks'].map((tab) => (
+                                    <button
+                                        key={tab}
+                                        onClick={() => setActiveTab(tab)}
+                                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === tab ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20' : 'text-slate-400 hover:text-white'}`}
+                                    >
+                                        {tab === 'my' ? 'My Creations' : tab.charAt(0).toUpperCase() + tab.slice(1)}
                                     </button>
                                 ))}
                             </div>
-                        )}
-                    </div>
-
-                    <div
-                        className={`border-2 border-dashed border-white/10 rounded-2xl p-8 text-center transition-all duration-300 relative overflow-hidden ${file ? 'bg-violet-500/10 border-violet-500/30' : 'hover:bg-white/5 hover:border-violet-500/30'} cursor-pointer`}
-                    >
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => setFile(e.target.files[0])}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                        />
-                        <div className="space-y-4 pointer-events-none relative z-0 flex flex-col items-center justify-center">
-                            <div className={`p-4 rounded-full bg-white/5 transition-transform duration-300 ${!file && 'group-hover:scale-110'}`}>
-                                {file ? <ImageIcon className="w-8 h-8 text-violet-300" /> : <Upload className="w-8 h-8 text-slate-400" />}
-                            </div>
-                            <div className="space-y-1">
-                                <p className="text-white font-medium text-lg">
-                                    {file ? file.name : "Upload Photo"}
-                                </p>
-                                <p className="text-slate-400 text-sm">
-                                    {file ? "Click to change" : "Drag & drop or click to browse"}
-                                </p>
-                            </div>
                         </div>
                     </div>
 
-                    {error && (
-                        <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-xl text-sm flex items-center gap-2 animate-fade-in-up">
-                            <span className="text-lg">⚠️</span>
-                            {error}
-                        </div>
-                    )}
-
-                    <button
-                        onClick={handleGenerate}
-                        disabled={generating || !file || credits < 1}
-                        className={`btn-primary w-full py-4 text-lg font-bold rounded-xl shadow-lg relative overflow-hidden group ${generating || !file || credits < 1 ? 'opacity-70' : ''}`}
-                    >
-                        <span className="relative z-10 flex items-center justify-center gap-2">
-                            {generating ? (
-                                <>
-                                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                                    Generating...
-                                </>
-                            ) : (
-                                <>
-                                    <Sparkles className="w-5 h-5" />
-                                    Generate (1 Credit)
-                                </>
-                            )}
-                        </span>
-                    </button>
-
-
-                </section>
-
-                {/* Result Section/Active Job Section */}
-                <section className="glass-card p-1 flex flex-col items-center justify-center min-h-[500px] relative overflow-hidden">
-                    {/* Background decor */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-50 pointer-events-none"></div>
-
-                    {activeJob ? (
-                        <div className="w-full p-8 space-y-8 relative z-10 animate-fade-in">
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-end">
-                                    <div className="space-y-1">
-                                        <h4 className="text-xl font-bold text-white flex items-center gap-2">
-                                            <span className="w-2 h-2 bg-violet-500 rounded-full animate-ping"></span>
-                                            Batch Generation
-                                        </h4>
-                                        <p className="text-slate-400 text-sm">Processing your masterpiece collection</p>
-                                    </div>
-                                    <span className="text-violet-400 font-bold text-2xl">
-                                        {Math.round((activeJob.completed / activeJob.total) * 100)}%
-                                    </span>
-                                </div>
-
-                                <div className="h-4 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 p-1">
-                                    <div
-                                        className="h-full bg-gradient-to-r from-violet-600 via-fuchsia-500 to-violet-600 bg-[length:200%_100%] animate-shimmer rounded-full transition-all duration-1000 ease-out"
-                                        style={{ width: `${(activeJob.completed / activeJob.total) * 100}%` }}
-                                    ></div>
-                                </div>
-                                <p className="text-center text-xs text-slate-500 font-medium tracking-widest uppercase">
-                                    {activeJob.completed} of {activeJob.total} images completed
-                                </p>
-                            </div>
-
-                            {activeJob.results && activeJob.results.length > 0 && (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 animate-fade-in-up">
-                                    {activeJob.results.slice().reverse().map((url, i) => (
-                                        <div key={i} className="aspect-square rounded-lg overflow-hidden border border-white/10 glass shadow-2xl relative group">
-                                            <img src={getImageUrl(url, apiUrl)} alt="Result" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                        </div>
-                                    ))}
-                                    {[...Array(activeJob.total - activeJob.results.length)].map((_, i) => (
-                                        <div key={`blank-${i}`} className="aspect-square rounded-lg bg-white/5 border border-white/5 animate-pulse flex items-center justify-center">
-                                            <ImageIcon className="w-6 h-6 text-white/10" />
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    ) : generating ? (
-                        <div className="text-center space-y-8 relative z-10 animate-fade-in-up">
-                            <div className="cyber-loader mx-auto"></div>
-                            <div className="space-y-2">
-                                <p className="text-white font-bold text-xl tracking-wide">Dreaming...</p>
-                                <p className="text-violet-300 text-sm animate-pulse">Consulting the neural network</p>
-                            </div>
-                        </div>
-                    ) : result ? (
-                        <div className="w-full h-full max-h-[600px] flex items-center justify-center relative group animate-fade-in-up rounded-2xl overflow-hidden cursor-zoom-in" onClick={() => { setPreviewImage(result); setShowFullSize(true); }}>
-                            <img
-                                src={result}
-                                alt="Generated"
-                                className="max-w-full max-h-full object-contain bg-black/50 backdrop-blur-sm transition-transform duration-500 group-hover:scale-[1.02]"
-                            />
-                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
-                                <Plus className="w-12 h-12 text-white/80" />
-                            </div>
-                            <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-300 md:translate-y-0" onClick={e => e.stopPropagation()}>
-                                <a
-                                    href={result}
-                                    download="generated.png"
-                                    className="w-full bg-white text-black font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-violet-50 transition-colors shadow-lg shadow-black/50"
-                                >
-                                    <Download className="w-5 h-5" />
-                                    Download High-Res
-                                </a>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="text-center text-slate-600 space-y-4 relative z-10">
-                            <div className="p-8 rounded-full bg-white/5 inline-flex backdrop-blur-xl border border-white/5 shimmer">
-                                <ImageIcon className="w-16 h-16 opacity-30" />
-                            </div>
-                            <p className="text-slate-500 font-medium">Your masterpiece will appear here</p>
-                        </div>
-                    )}
-                </section>
-            </main>
-
-            <section className="mt-16 space-y-8 pb-12">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-white/5 rounded-lg border border-white/10 shadow-inner">
-                                <ImageIcon className="w-5 h-5 text-violet-400" />
-                            </div>
-                            <h3 className="text-xl font-bold text-white tracking-tight">Gallery</h3>
-                        </div>
-
-                        {/* Search / Tag Filter */}
-                        <div className="relative hidden md:block">
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search by tag..."
-                                className="bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 w-48 transition-all focus:w-64"
-                            />
-                            {searchQuery && (
-                                <button
-                                    onClick={() => setSearchQuery('')}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
-                                >
-                                    <X className="w-3 h-3" />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 items-center">
-                        {activeTag && (
-                            <div className="flex items-center gap-2 bg-violet-600/20 text-violet-300 px-3 py-1 rounded-full border border-violet-500/30 text-xs font-bold animate-fade-in">
-                                Tag: {activeTag}
-                                <button onClick={() => setActiveTag(null)} className="hover:text-white">
-                                    <X className="w-3 h-3" />
-                                </button>
-                            </div>
-                        )}
-                        <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
-                            {['my', 'likes', 'bookmarks'].map((tab) => (
-                                <button
-                                    key={tab}
-                                    onClick={() => setActiveTab(tab)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === tab ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20' : 'text-slate-400 hover:text-white'}`}
-                                >
-                                    {tab === 'my' ? 'My Creations' : tab.charAt(0).toUpperCase() + tab.slice(1)}
-                                </button>
+                    {loadingHistory ? (
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                            {[...Array(5)].map((_, i) => (
+                                <div key={i} className="aspect-square bg-white/5 rounded-xl animate-pulse border border-white/5"></div>
                             ))}
                         </div>
-                    </div>
-                </div>
-
-                {loadingHistory ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                        {[...Array(5)].map((_, i) => (
-                            <div key={i} className="aspect-square bg-white/5 rounded-xl animate-pulse border border-white/5"></div>
-                        ))}
-                    </div>
-                ) : history.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-fade-in">
-                        {history.map((item) => (
-                            <div
-                                key={item.id}
-                                className="group flex flex-col space-y-3"
-                            >
+                    ) : history.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-fade-in">
+                            {history.map((item) => (
                                 <div
-                                    className="relative aspect-[3/4] glass-card p-1 cursor-pointer overflow-hidden rounded-2xl border-white/5 hover:border-violet-500/30 transition-all duration-500 shadow-lg group-hover:shadow-violet-500/10"
-                                    onClick={() => {
-                                        setPreviewImage(getImageUrl(item.imageUrl, apiUrl));
-                                        setShowFullSize(true);
-                                    }}
+                                    key={item.id}
+                                    className="group flex flex-col space-y-3"
                                 >
-                                    <img
-                                        src={getImageUrl(item.imageUrl, apiUrl)}
-                                        alt={item.prompt}
-                                        className="w-full h-full object-cover rounded-xl transition-transform duration-700 group-hover:scale-105"
-                                    />
+                                    <div
+                                        className="relative aspect-[3/4] glass-card p-1 cursor-pointer overflow-hidden rounded-2xl border-white/5 hover:border-violet-500/30 transition-all duration-500 shadow-lg group-hover:shadow-violet-500/10"
+                                        onClick={() => {
+                                            setPreviewImage(getImageUrl(item.imageUrl, apiUrl));
+                                            setShowFullSize(true);
+                                        }}
+                                    >
+                                        <img
+                                            src={getImageUrl(item.imageUrl, apiUrl)}
+                                            alt={item.prompt}
+                                            className="w-full h-full object-cover rounded-xl transition-transform duration-700 group-hover:scale-105"
+                                        />
 
-                                    {/* Quick Actions Overlay */}
-                                    <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handleInteraction('like', item); }}
-                                            className={`p-2 rounded-full backdrop-blur-md border transition-all hover:scale-110 ${item.isLiked ? 'bg-rose-500/20 border-rose-500/50 text-rose-400' : 'bg-black/40 border-white/10 text-white/70 hover:text-rose-400'}`}
-                                            title="Like"
-                                        >
-                                            <Heart className={`w-4 h-4 ${item.isLiked ? 'fill-rose-500' : ''}`} />
-                                        </button>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handleInteraction('bookmark', item); }}
-                                            className={`p-2 rounded-full backdrop-blur-md border transition-all hover:scale-110 ${item.isBookmarked ? 'bg-amber-500/20 border-amber-500/50 text-amber-400' : 'bg-black/40 border-white/10 text-white/70 hover:text-amber-400'}`}
-                                            title="Bookmark"
-                                        >
-                                            <Bookmark className={`w-4 h-4 ${item.isBookmarked ? 'fill-amber-500' : ''}`} />
-                                        </button>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); setRemixSource(item); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                                            className="p-2 rounded-full backdrop-blur-md border border-white/10 bg-black/40 text-white/70 hover:text-white hover:bg-violet-600/50 transition-all hover:scale-110"
-                                            title="Remix Style"
-                                        >
-                                            <Layers className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handleShare(item); }}
-                                            className={`p-2 rounded-full backdrop-blur-md border transition-all hover:scale-110 ${item.isPublic ? 'bg-violet-500/20 border-violet-500/50 text-violet-200' : 'bg-black/40 border-white/10 text-white/70 hover:text-white'}`}
-                                            title={item.isPublic ? "Share Settings" : "Make Public & Share"}
-                                        >
-                                            <Share2 className="w-4 h-4" />
-                                        </button>
+                                        {/* Quick Actions Overlay */}
+                                        <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleInteraction('like', item); }}
+                                                className={`p-2 rounded-full backdrop-blur-md border transition-all hover:scale-110 ${item.isLiked ? 'bg-rose-500/20 border-rose-500/50 text-rose-400' : 'bg-black/40 border-white/10 text-white/70 hover:text-rose-400'}`}
+                                                title="Like"
+                                            >
+                                                <Heart className={`w-4 h-4 ${item.isLiked ? 'fill-rose-500' : ''}`} />
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleInteraction('bookmark', item); }}
+                                                className={`p-2 rounded-full backdrop-blur-md border transition-all hover:scale-110 ${item.isBookmarked ? 'bg-amber-500/20 border-amber-500/50 text-amber-400' : 'bg-black/40 border-white/10 text-white/70 hover:text-amber-400'}`}
+                                                title="Bookmark"
+                                            >
+                                                <Bookmark className={`w-4 h-4 ${item.isBookmarked ? 'fill-amber-500' : ''}`} />
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setRemixSource(item); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                                                className="p-2 rounded-full backdrop-blur-md border border-white/10 bg-black/40 text-white/70 hover:text-white hover:bg-violet-600/50 transition-all hover:scale-110"
+                                                title="Remix Style"
+                                            >
+                                                <Layers className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleShare(item); }}
+                                                className={`p-2 rounded-full backdrop-blur-md border transition-all hover:scale-110 ${item.isPublic ? 'bg-violet-500/20 border-violet-500/50 text-violet-200' : 'bg-black/40 border-white/10 text-white/70 hover:text-white'}`}
+                                                title={item.isPublic ? "Share Settings" : "Make Public & Share"}
+                                            >
+                                                <Share2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+
+                                        {/* Hover info */}
+                                        <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                            <div className="flex flex-wrap gap-1.5 mt-2">
+                                                {item.tags?.slice(0, 3).map(tag => (
+                                                    <span
+                                                        key={tag}
+                                                        onClick={(e) => { e.stopPropagation(); setActiveTag(tag); }}
+                                                        className="bg-white/10 hover:bg-white/20 text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/10 transition-colors"
+                                                    >
+                                                        #{tag}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    {/* Hover info */}
-                                    <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                        <div className="flex flex-wrap gap-1.5 mt-2">
-                                            {item.tags?.slice(0, 3).map(tag => (
-                                                <span
-                                                    key={tag}
-                                                    onClick={(e) => { e.stopPropagation(); setActiveTag(tag); }}
-                                                    className="bg-white/10 hover:bg-white/20 text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/10 transition-colors"
-                                                >
-                                                    #{tag}
-                                                </span>
-                                            ))}
+                                    {/* Summary & Voting */}
+                                    <div className="px-1 flex items-center justify-between gap-3">
+                                        <div className="flex-grow min-w-0">
+                                            <h4 className="text-sm font-bold text-white truncate group-hover:text-violet-300 transition-colors">
+                                                {item.summary || "Masterpiece"}
+                                            </h4>
+                                            <p className="text-[10px] text-slate-500 font-medium">
+                                                {new Date(item.createdAt).toLocaleDateString()}
+                                            </p>
+                                        </div>
+
+                                        <div className="flex items-center gap-1 bg-white/5 rounded-full p-1 border border-white/5">
+                                            <button
+                                                onClick={() => handleVote(item.id, 'up')}
+                                                className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-green-400"
+                                            >
+                                                <ThumbsUp className="w-3.5 h-3.5" />
+                                            </button>
+                                            <span className="text-[10px] font-bold text-slate-300 min-w-[12px] text-center">
+                                                {item.votes || 0}
+                                            </span>
+                                            <button
+                                                onClick={() => handleVote(item.id, 'down')}
+                                                className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-red-400"
+                                            >
+                                                <ThumbsDown className="w-3.5 h-3.5" />
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-20 glass-card bg-white/[0.01] border-dashed border-white/10">
+                            <p className="text-slate-500 font-medium">Your artistic journey starts with your first generation.</p>
+                        </div>
+                    )}
+                </section>
 
-                                {/* Summary & Voting */}
-                                <div className="px-1 flex items-center justify-between gap-3">
-                                    <div className="flex-grow min-w-0">
-                                        <h4 className="text-sm font-bold text-white truncate group-hover:text-violet-300 transition-colors">
-                                            {item.summary || "Masterpiece"}
-                                        </h4>
-                                        <p className="text-[10px] text-slate-500 font-medium">
-                                            {new Date(item.createdAt).toLocaleDateString()}
-                                        </p>
-                                    </div>
+            </div>
 
-                                    <div className="flex items-center gap-1 bg-white/5 rounded-full p-1 border border-white/5">
-                                        <button
-                                            onClick={() => handleVote(item.id, 'up')}
-                                            className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-green-400"
-                                        >
-                                            <ThumbsUp className="w-3.5 h-3.5" />
-                                        </button>
-                                        <span className="text-[10px] font-bold text-slate-300 min-w-[12px] text-center">
-                                            {item.votes || 0}
-                                        </span>
-                                        <button
-                                            onClick={() => handleVote(item.id, 'down')}
-                                            className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-red-400"
-                                        >
-                                            <ThumbsDown className="w-3.5 h-3.5" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-center py-20 glass-card bg-white/[0.01] border-dashed border-white/10">
-                        <p className="text-slate-500 font-medium">Your artistic journey starts with your first generation.</p>
-                    </div>
-                )}
-            </section>
-
-            {/* Full Size Modal */}
+            {/* Full Size Modal - Outside of animated transform container */}
             {showFullSize && previewImage && (
                 <div
-                    className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 md:p-12 animate-fade-in"
+                    className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 md:p-12 animate-fade-in"
                     onClick={() => setShowFullSize(false)}
                 >
                     <button
-                        className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors p-2 rounded-full hover:bg-white/10 z-[110]"
+                        className="absolute top-4 right-4 md:top-6 md:right-6 text-white/50 hover:text-white transition-colors p-2 rounded-full hover:bg-white/10 z-[210]"
                         onClick={() => setShowFullSize(false)}
                     >
                         <Plus className="w-8 h-8 rotate-45" />
@@ -779,7 +794,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                         <img
                             src={previewImage}
                             alt="Full size"
-                            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                            className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
                             onClick={e => e.stopPropagation()}
                         />
                         <a
@@ -795,9 +810,9 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                 </div>
             )}
 
-            {/* Share Modal */}
+            {/* Share Modal - Outside of animated transform container */}
             {sharingItem && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSharingItem(null)}></div>
                     <div className="glass-panel w-full max-w-md rounded-3xl overflow-hidden relative animate-scale-in">
                         <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5">
