@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { Firebase } from './lib/firebase'
 import { getStripe } from './lib/stripe'
 import { Analytics } from './lib/analytics'
+import { sendTelegramMessage } from './lib/telegram'
 
 type Bindings = {
   FIREBASE_PROJECT_ID: string
@@ -12,6 +13,8 @@ type Bindings = {
   GEMINI_API_KEY?: string
   STRIPE_SECRET_KEY: string
   STRIPE_WEBHOOK_SECRET: string
+  TELEGRAM_BOT_TOKEN?: string
+  TELEGRAM_CHAT_ID?: string
   BUCKET: R2Bucket
   AI: Ai
 }
@@ -210,6 +213,21 @@ app.post('/api/auth/verify', async (c) => {
         }
 
         console.log(`[Verify] User created successfully:`, !!userDoc.fields)
+
+        // Send Telegram Notification for New Users
+        const notificationEmail = payload.email || 'unknown';
+        const notificationName = `${fName || ''} ${lName || ''}`.trim() || (payload.name as string) || 'Anonymous';
+        const notificationMessage = `🚀 *New User Signup!*
+        
+👤 *Name:* ${notificationName}
+📧 *Email:* ${notificationEmail}
+🆔 *UID:* \`${uid}\``;
+
+        c.executionCtx.waitUntil(sendTelegramMessage(
+          c.env.TELEGRAM_BOT_TOKEN || '',
+          c.env.TELEGRAM_CHAT_ID || '',
+          notificationMessage
+        ));
       } catch (ce: any) {
         console.error(`[Verify] Firestore CREATE failed:`, ce.message)
         throw new Error(`Failed to initialize user in database: ${ce.message}`)
@@ -243,6 +261,9 @@ app.post('/api/auth/verify', async (c) => {
       { email: payload.email, isNewUser: !userDoc },
       { ip: c.req.header('CF-Connecting-IP') || 'unknown', userAgent: c.req.header('User-Agent') }
     ))
+
+
+
 
     return c.json({ status: 'ok', user: userDoc.fields })
   } catch (e: any) {
@@ -838,6 +859,20 @@ app.get('/api/admin/users', async (c) => {
       : users
 
     return c.json({ status: 'success', users: filtered })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+
+})
+
+// Delete user
+app.delete('/api/admin/users/:id', async (c) => {
+  const firebase = c.get('firebase')
+  const id = c.req.param('id')
+  try {
+    // Delete from Firestore
+    await firebase.firestore('DELETE', `users/${id}`)
+    return c.json({ status: 'success' })
   } catch (e: any) {
     return c.json({ error: e.message }, 500)
   }
@@ -1553,11 +1588,16 @@ app.post('/api/stripe/webhook', async (c) => {
           }
         } else if (type === 'pro_sub') {
           // Activate Subscription
+          // Also track initial payment as revenue
+          const userDoc: any = await firebase.firestore('GET', `users/${userId}`)
+          const currentSpent = parseFloat(userDoc.fields?.totalSpent?.doubleValue || '0')
+
           await firebase.firestore('PATCH', `users/${userId}`, {
             fields: {
               subscriptionStatus: { stringValue: 'active' },
               subscriptionEnd: { timestampValue: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() },
-              subscriptionId: { stringValue: session.subscription }
+              subscriptionId: { stringValue: session.subscription },
+              totalSpent: { doubleValue: currentSpent + (session.amount_total / 100) }
             }
           })
         }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Search, MoreVertical } from 'lucide-react';
+import { Search, Trash2 } from 'lucide-react';
 
 export function UserManager() {
     const { getToken } = useAuth();
@@ -83,8 +83,25 @@ export function UserManager() {
                                         {new Date(user.createdAt).toLocaleDateString()}
                                     </td>
                                     <td className="p-4 text-right">
-                                        <button className="text-gray-500 hover:text-white">
-                                            <MoreVertical size={18} />
+                                        <button
+                                            onClick={async () => {
+                                                if (window.confirm('Are you sure you want to delete this user? This cannot be undone.')) {
+                                                    try {
+                                                        const token = await getToken();
+                                                        await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/${user.id}`, {
+                                                            method: 'DELETE',
+                                                            headers: { Authorization: `Bearer ${token}` }
+                                                        });
+                                                        setUsers(users.filter(u => u.id !== user.id));
+                                                    } catch (e) {
+                                                        alert('Failed to delete user');
+                                                    }
+                                                }
+                                            }}
+                                            className="text-gray-500 hover:text-red-400 transition-colors"
+                                            title="Delete User"
+                                        >
+                                            <Trash2 size={18} />
                                         </button>
                                     </td>
                                 </tr>
