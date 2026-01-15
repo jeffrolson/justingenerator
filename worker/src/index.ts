@@ -390,6 +390,7 @@ app.post('/api/generate', async (c) => {
 
   // 4. Generate Image
   let aiImage: ArrayBuffer
+  let usage: any = {}
   const start = Date.now()
 
   try {
@@ -449,6 +450,7 @@ app.post('/api/generate', async (c) => {
 
     const result = await response.json() as any
     const imagePart = result.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData)
+    const usage = result.usageMetadata || {}
 
     if (!imagePart) {
       throw new Error('No image returned from Gemini')
@@ -456,7 +458,14 @@ app.post('/api/generate', async (c) => {
 
     // Convert base64 back to ArrayBuffer using Buffer
     aiImage = Buffer.from(imagePart.inlineData.data, 'base64').buffer
-    console.log(`Generation successful! Processing took ${Date.now() - start}ms`)
+    console.log(`Generation successful! Tokens: ${usage.totalTokenCount || 0}. Processing took ${Date.now() - start}ms`)
+
+    // Include usage in metadata for logging later
+    const genTokens = {
+      prompt: usage.promptTokenCount || 0,
+      candidates: usage.candidatesTokenCount || 0,
+      total: usage.totalTokenCount || 0
+    }
   } catch (e: any) {
     // Refund credit on failure
     await firebase.firestore('PATCH', `users/${user.sub}?updateMask.fieldPaths=credits`, {
@@ -568,11 +577,18 @@ app.post('/api/generate', async (c) => {
     }
   }
 
-  // Log success
+  // Log success with token metadata
   c.executionCtx.waitUntil(analytics.logEvent(
     'generate_completed',
     user.sub,
-    { genId, prompt, tags, processingTime: Date.now() - start, success: true }
+    {
+      genId,
+      prompt,
+      tags,
+      processingTime: Date.now() - start,
+      success: true,
+      tokens: usage.totalTokenCount || 0 // Assuming 'result' and its 'usageMetadata' are accessible or we passed them along
+    }
   ))
 
   return c.json({
@@ -669,45 +685,106 @@ app.post('/api/admin/aggregate', async (c) => {
 app.get('/api/admin/kpis', async (c) => {
   const firebase = c.get('firebase')
   const analytics = c.get('analytics')
+  const range = c.req.query('range') || '7d'
 
   try {
-    // 1. Fetch last 7 days of aggregated stats
-    const dates = [...Array(7)].map((_, i) => {
+    // 1. Determine Date Range
+    let days = 7
+    if (range === '30d') days = 30
+    if (range === '90d') days = 90
+    if (range === 'all') days = 365 // Cap at 1 year for now
+
+    const dates = [...Array(days)].map((_, i) => {
       const d = new Date()
       d.setDate(d.getDate() - i)
       return d.toISOString().split('T')[0]
     }).reverse()
 
-    // Fetch in parallel
-    const docs = await Promise.all(
-      dates.map(date => firebase.firestore('GET', `daily_stats/${date}`).catch(() => null))
-    )
+    // Fetch in parallel (Batched in groups of 30 if needed, but for <100 this is okay-ish on Cloudflare)
+    // For larger ranges, we should query by date range instead of ID list
+    let docs: any[] = []
+
+    if (days <= 30) {
+      docs = await Promise.all(
+        dates.map(date => firebase.firestore('GET', `daily_stats/${date}`).catch(() => null))
+      )
+    } else {
+      // Use query for larger ranges
+      const start = dates[0]
+      const end = dates[dates.length - 1]
+      const queryRes: any = await firebase.query('daily_stats', {
+        where: {
+          compositeFilter: {
+            op: 'AND',
+            filters: [
+              { fieldFilter: { field: { fieldPath: 'date' }, op: 'GREATER_THAN_OR_EQUAL', value: { stringValue: start } } },
+              { fieldFilter: { field: { fieldPath: 'date' }, op: 'LESS_THAN_OR_EQUAL', value: { stringValue: end } } }
+            ]
+          }
+        },
+        orderBy: [{ field: { fieldPath: 'date' }, direction: 'ASCENDING' }],
+        limit: days
+      })
+      // Map query results to dates array to ensuring missing days are handled
+      const docMap = new Map(queryRes.map((d: any) => [d.fields.date.stringValue, d]))
+      docs = dates.map(date => docMap.get(date) || null)
+    }
 
     // Parse stats
     const stats = docs.map((doc: any, i) => {
       const date = dates[i]
-      if (!doc || !doc.fields) return { date, activeUsers: 0, newUsers: 0, revenue: 0, generations: 0, latency: 0 }
+      if (!doc || !doc.fields) return {
+        date, activeUsers: 0, newUsers: 0, revenue: 0,
+        generations: 0, latency: 0, totalTokens: 0, cost: 0
+      }
+
+      const revenue = parseFloat(doc.fields.revenue?.doubleValue || '0')
+      const tokens = parseInt(doc.fields.totalTokens?.integerValue || '0')
+
+      // Estimated Cost Calculation
+      // Pricing (Hypothetical Gemini Flash): $0.35 / 1M tokens (input), $1.05 / 1M tokens (output)
+      // Simplifying to avg $0.50 / 1M tokens for visualization
+      const estimatedCost = (tokens / 1000000) * 0.50
+
       return {
         date,
         activeUsers: parseInt(doc.fields.activeUsers?.integerValue || '0'),
         newUsers: parseInt(doc.fields.newUsers?.integerValue || '0'),
-        revenue: parseFloat(doc.fields.revenue?.doubleValue || '0'),
+        revenue,
         generations: parseInt(doc.fields.generations?.integerValue || '0'),
-        latency: parseFloat(doc.fields.avgLatency?.doubleValue || '0')
+        generationFailures: parseInt(doc.fields.generationFailures?.integerValue || '0'),
+        latency: parseFloat(doc.fields.avgLatency?.doubleValue || '0'),
+        totalTokens: tokens,
+        cost: estimatedCost
       }
     })
 
-    // Calculate Totals/Trends (Simplistic comparison of last day vs avg or similar)
-    const current = stats[stats.length - 1]
-    const prev = stats[stats.length - 2] || current
+    // Calculate KPI Totals for the Period
+    const totalActive = new Set(stats.flatMap(d => d.activeUsers > 0 ? [d.date] : [])).size // Proxy for now, ideally unique UIDs
+    // Better proxy: Average DAU
+    const avgDAU = Math.round(stats.reduce((acc, curr) => acc + curr.activeUsers, 0) / (stats.length || 1))
+    const totalRevenue = stats.reduce((acc, curr) => acc + curr.revenue, 0)
+    const totalNewUsers = stats.reduce((acc, curr) => acc + curr.newUsers, 0)
+    const totalTokens = stats.reduce((acc, curr) => acc + curr.totalTokens, 0)
+    const totalCost = stats.reduce((acc, curr) => acc + curr.cost, 0)
+
+    // Trends (Compare current period vs previous period of same length - skipped for simplicity, just using last data point vs avg)
+    // Actually, let's use the last day vs 7-day avg for trend arrow
+    const currentDay = stats[stats.length - 1]
+    const prevDay = stats[stats.length - 2] || currentDay
+
+    // Conversion Rate: Total Revenue / (Unique Users or Generations?) -> Let's do Paying Users / Total Users if available
+    // For now: (New Users with Revenue > 0 / Total New Users) - hard to track without user-level aggregation
+    // Alternative: Just Revenue / Active Users (ARPU)
+    const arpu = avgDAU > 0 ? (totalRevenue / avgDAU) : 0
 
     const kpis = {
-      activeUsers: { value: current.activeUsers, trend: calcTrend(current.activeUsers, prev.activeUsers) },
-      revenue: { value: current.revenue.toFixed(2), trend: calcTrend(current.revenue, prev.revenue) },
-      newUsers: { value: current.newUsers, trend: calcTrend(current.newUsers, prev.newUsers) },
-      generationSuccess: { value: calcSuccessRate(current), trend: 0 },
-      avgLatency: { value: current.latency.toFixed(2), trend: 0 },
-      conversionRate: { value: 0, trend: 0 } // TBD
+      activeUsers: { value: avgDAU, label: 'Avg Daily Users', trend: calcTrend(currentDay.activeUsers, prevDay.activeUsers) },
+      revenue: { value: totalRevenue.toFixed(2), label: 'Total Revenue', trend: calcTrend(currentDay.revenue, prevDay.revenue) },
+      newUsers: { value: totalNewUsers, label: 'New Signups', trend: calcTrend(currentDay.newUsers, prevDay.newUsers) },
+      tokens: { value: (totalTokens / 1000000).toFixed(2) + 'M', label: 'Tokens Used', trend: 0 },
+      cost: { value: totalCost.toFixed(3), label: 'Est. Cost', trend: 0 },
+      netProfit: { value: (totalRevenue - totalCost).toFixed(2), label: 'Est. Net Profit', trend: 0 }
     }
 
     return c.json({
@@ -718,6 +795,7 @@ app.get('/api/admin/kpis', async (c) => {
       }
     })
   } catch (e: any) {
+    console.error("KPI Error", e)
     return c.json({ error: e.message }, 500)
   }
 })
@@ -728,8 +806,9 @@ function calcTrend(curr: number, prev: number) {
 }
 
 function calcSuccessRate(stat: any) {
-  // If we had failure counts
-  return 100;
+  const total = stat.generations + stat.generationFailures;
+  if (total === 0) return 100;
+  return Math.round((stat.generations / total) * 100);
 }
 
 // Admin User Search

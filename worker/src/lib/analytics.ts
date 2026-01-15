@@ -107,7 +107,8 @@ export class Analytics {
             generations: 0,
             generationFailures: 0,
             totalLatency: 0,
-            latencyCount: 0
+            latencyCount: 0,
+            totalTokens: 0
         }
 
         for (const doc of events) {
@@ -133,6 +134,8 @@ export class Analytics {
                     stats.totalLatency += time
                     stats.latencyCount++
                 }
+                const tokens = parseInt(e.metadata?.mapValue?.fields?.tokens?.integerValue || e.metadata?.mapValue?.fields?.tokens?.doubleValue || '0')
+                stats.totalTokens += tokens
             } else if (type === 'generate_failed') {
                 stats.generationFailures++
             }
@@ -152,6 +155,7 @@ export class Analytics {
                 generations: { integerValue: stats.generations },
                 generationFailures: { integerValue: stats.generationFailures },
                 avgLatency: { doubleValue: avgLatency },
+                totalTokens: { integerValue: stats.totalTokens },
                 updatedAt: { timestampValue: new Date().toISOString() }
             }
         }
