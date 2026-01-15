@@ -81,7 +81,16 @@ export function ExploreFeed({ onRemix }) {
 
     return (
         <div className="w-full max-w-7xl mx-auto px-4 py-12">
-            <div className="text-center mb-16 space-y-4">
+            <div className="text-center mb-16 space-y-4 relative">
+                {user && (
+                    <button
+                        onClick={() => window.location.href = '/'}
+                        className="absolute left-0 top-0 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium bg-white/5 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10"
+                    >
+                        <ArrowRight className="w-4 h-4 rotate-180" />
+                        Back to Studio
+                    </button>
+                )}
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-sm font-medium animate-fade-in">
                     <Sparkles className="w-4 h-4" />
                     <span>Discovery Feed</span>

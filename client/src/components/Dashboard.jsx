@@ -368,6 +368,13 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                 </div>
 
                 <div className="flex items-center gap-6">
+                    <button
+                        onClick={() => window.location.href = '/explore'}
+                        className="text-slate-400 hover:text-white transition-colors flex items-center gap-2 text-sm font-bold uppercase tracking-wider hover:scale-105"
+                    >
+                        <ExternalLink className="w-4 h-4" />
+                        Public Gallery
+                    </button>
                     <div className="flex items-center gap-3 bg-white/5 pl-5 pr-2 py-1.5 rounded-full border border-white/10 group/credits">
                         <div className="flex items-center gap-2">
                             <span className="text-violet-200 text-[10px] font-bold uppercase tracking-widest opacity-60">Credits</span>

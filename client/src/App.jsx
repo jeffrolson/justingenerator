@@ -59,6 +59,18 @@ function AppContent() {
     return user ? <AdminDashboard /> : <Login />;
   }
 
+  // Explicit Explore Route (Public/Private)
+  if (path === '/explore') {
+    return (
+      <ExploreFeed
+        onRemix={(item) => {
+          setRemixItem(item);
+          window.history.pushState({}, '', '/'); // Go to dashboard
+        }}
+      />
+    );
+  }
+
   // Dashboard (Auth guarded)
   if (user) {
     return <Dashboard initialRemix={remixItem} onClearRemix={() => setRemixItem(null)} />;

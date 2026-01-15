@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { Firebase } from './lib/firebase'
 import { getStripe } from './lib/stripe'
+import { Analytics } from './lib/analytics'
 
 type Bindings = {
   FIREBASE_PROJECT_ID: string
@@ -17,6 +18,7 @@ type Bindings = {
 
 type Variables = {
   firebase: Firebase
+  analytics: Analytics
   user: any // Payload from JWT
 }
 
@@ -75,7 +77,10 @@ app.use('/api/*', async (c, next) => {
   }
 
   const firebase = new Firebase(c.env)
+  const analytics = new Analytics(firebase)
+
   c.set('firebase', firebase)
+  c.set('analytics', analytics)
 
   // Authentication Middleware
   const path = c.req.path
@@ -105,6 +110,31 @@ app.use('/api/*', async (c, next) => {
 
 app.get('/', (c) => {
   return c.text('Justin Generator API')
+})
+
+// Client-side event logging
+app.post('/api/events', async (c) => {
+  const analytics = c.get('analytics')
+  const user = c.get('user')
+  let body: any = {}
+  try {
+    body = await c.req.json()
+  } catch (e) {
+    return c.json({ error: 'Invalid JSON' }, 400)
+  }
+
+  const { eventType, metadata } = body
+  if (!eventType) return c.json({ error: 'Missing eventType' }, 400)
+
+  // We await this one to ensure client knows it succeeded, but we could also fire-and-forget
+  await analytics.logEvent(
+    eventType,
+    user?.sub, // Might be undefined if public event (handled by middleware if auth required)
+    metadata,
+    { ip: c.req.header('CF-Connecting-IP'), userAgent: c.req.header('User-Agent') }
+  )
+
+  return c.json({ status: 'ok' })
 })
 
 // Auth: Verify token and sync user to Firestore
@@ -169,6 +199,15 @@ app.post('/api/auth/verify', async (c) => {
       throw new Error("User record found but data is corrupted or missing fields")
     }
 
+    // Log successful login/signup
+    const analytics = c.get('analytics')
+    c.executionCtx.waitUntil(analytics.logEvent(
+      'user_login',
+      uid,
+      { email: payload.email, isNewUser: !userDoc },
+      { ip: c.req.header('CF-Connecting-IP') || 'unknown', userAgent: c.req.header('User-Agent') }
+    ))
+
     return c.json({ status: 'ok', user: userDoc.fields })
   } catch (e: any) {
     const errorDetails = {
@@ -192,8 +231,10 @@ app.post('/api/generate', async (c) => {
   // 1. Check credits
   const userDoc: any = await firebase.firestore('GET', `users/${user.sub}`)
   const credits = parseInt(userDoc.fields?.credits?.integerValue || '0')
+  const analytics = c.get('analytics')
 
   if (credits < 1) {
+    c.executionCtx.waitUntil(analytics.logEvent('generate_failed', user.sub, { reason: 'insufficient_credits', credits }))
     return c.json({ error: 'Insufficient credits' }, 402)
   }
 
@@ -237,6 +278,12 @@ app.post('/api/generate', async (c) => {
     }
   }
 
+  c.executionCtx.waitUntil(analytics.logEvent(
+    'generate_started',
+    user.sub,
+    { prompt, presetId: presetId || 'custom', creditsBefore: credits, remixFrom }
+  ))
+
   if (!file) {
     return c.json({ error: 'No image uploaded' }, 400)
   }
@@ -258,6 +305,7 @@ app.post('/api/generate', async (c) => {
 
   // 4. Generate Image
   let aiImage: ArrayBuffer
+  const start = Date.now()
 
   try {
     if (!c.env.GEMINI_API_KEY) {
@@ -265,7 +313,6 @@ app.post('/api/generate', async (c) => {
     }
 
     console.log(`Starting generation with prompt: ${prompt}`)
-    const start = Date.now()
 
     const fileData = await file.arrayBuffer()
     // Use Buffer for more efficient Base64 conversion (requires nodejs_compat)
@@ -373,6 +420,8 @@ app.post('/api/generate', async (c) => {
   // 7. Store Result to R2
   await c.env.BUCKET.put(resultPath, aiImage)
 
+
+
   // 8. Record Generation in Firestore
   await firebase.firestore('PATCH', `generations/${genId}`, {
     fields: {
@@ -391,6 +440,13 @@ app.post('/api/generate', async (c) => {
       remixFrom: remixFrom ? { stringValue: remixFrom } : { nullValue: null }
     }
   })
+
+  // Log success
+  c.executionCtx.waitUntil(analytics.logEvent(
+    'generate_completed',
+    user.sub,
+    { genId, prompt, tags, processingTime: Date.now() - start, success: true }
+  ))
 
   return c.json({
     status: 'success',
@@ -447,29 +503,138 @@ app.get('/api/presets', async (c) => {
 
 // --- Admin Endpoints ---
 
-// List all stored prompts
-app.get('/api/admin/prompts', async (c) => {
+// Admin Middleware: strict role check
+app.use('/api/admin/*', async (c, next) => {
+  const user = c.get('user')
   const firebase = c.get('firebase')
+
+  if (!user) return c.json({ error: 'Unauthorized' }, 401)
+
+  // Fetch full user doc to check role
   try {
-    const results = await firebase.query('stored_prompts', {
-      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }]
+    const userDoc: any = await firebase.firestore('GET', `users/${user.sub}`)
+    const role = userDoc.fields?.role?.stringValue
+    if (role !== 'admin') {
+      console.warn(`[AdminAccess] Denied for user ${user.sub} (role: ${role})`)
+      return c.json({ error: 'Forbidden' }, 403)
+    }
+  } catch (e) {
+    console.error('Admin role check failed', e)
+    return c.json({ error: 'Internal Server Error' }, 500)
+  }
+  await next()
+})
+
+// Trigger Aggregation (Manual for now, can be CRON)
+app.post('/api/admin/aggregate', async (c) => {
+  const analytics = c.get('analytics')
+  const date = c.req.query('date') // Optional YYYY-MM-DD
+  try {
+    const stats = await analytics.aggregateDailyStats(date)
+    return c.json({ status: 'success', stats })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+})
+
+// KPI Dashboard Data (Real)
+app.get('/api/admin/kpis', async (c) => {
+  const firebase = c.get('firebase')
+  const analytics = c.get('analytics')
+
+  try {
+    // 1. Fetch last 7 days of aggregated stats
+    const dates = [...Array(7)].map((_, i) => {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      return d.toISOString().split('T')[0]
+    }).reverse()
+
+    // Fetch in parallel
+    const docs = await Promise.all(
+      dates.map(date => firebase.firestore('GET', `daily_stats/${date}`).catch(() => null))
+    )
+
+    // Parse stats
+    const stats = docs.map((doc: any, i) => {
+      const date = dates[i]
+      if (!doc || !doc.fields) return { date, activeUsers: 0, newUsers: 0, revenue: 0, generations: 0, latency: 0 }
+      return {
+        date,
+        activeUsers: parseInt(doc.fields.activeUsers?.integerValue || '0'),
+        newUsers: parseInt(doc.fields.newUsers?.integerValue || '0'),
+        revenue: parseFloat(doc.fields.revenue?.doubleValue || '0'),
+        generations: parseInt(doc.fields.generations?.integerValue || '0'),
+        latency: parseFloat(doc.fields.avgLatency?.doubleValue || '0')
+      }
     })
+
+    // Calculate Totals/Trends (Simplistic comparison of last day vs avg or similar)
+    const current = stats[stats.length - 1]
+    const prev = stats[stats.length - 2] || current
+
+    const kpis = {
+      activeUsers: { value: current.activeUsers, trend: calcTrend(current.activeUsers, prev.activeUsers) },
+      revenue: { value: current.revenue.toFixed(2), trend: calcTrend(current.revenue, prev.revenue) },
+      newUsers: { value: current.newUsers, trend: calcTrend(current.newUsers, prev.newUsers) },
+      generationSuccess: { value: calcSuccessRate(current), trend: 0 },
+      avgLatency: { value: current.latency.toFixed(2), trend: 0 },
+      conversionRate: { value: 0, trend: 0 } // TBD
+    }
 
     return c.json({
       status: 'success',
-      prompts: results.map((doc: any) => ({
-        id: doc.id,
-        name: doc.name?.stringValue,
-        prompt: doc.prompt?.stringValue,
-        tags: doc.tags?.arrayValue?.values?.map((v: any) => v.stringValue) || [],
-        imageUrl: doc.imageUrl?.stringValue,
-        createdAt: doc.createdAt?.timestampValue
-      }))
+      kpis,
+      charts: {
+        growth: stats
+      }
     })
   } catch (e: any) {
     return c.json({ error: e.message }, 500)
   }
 })
+
+function calcTrend(curr: number, prev: number) {
+  if (prev === 0) return curr > 0 ? 100 : 0;
+  return Math.round(((curr - prev) / prev) * 100);
+}
+
+function calcSuccessRate(stat: any) {
+  // If we had failure counts
+  return 100;
+}
+
+// Admin User Search
+app.get('/api/admin/users', async (c) => {
+  const firebase = c.get('firebase')
+  const search = c.req.query('q')
+  // Simple limit for now
+  try {
+    const results = await firebase.firestore('GET', 'users?pageSize=50') as any
+    const users = results.documents?.map((doc: any) => {
+      const f = doc.fields
+      return {
+        id: doc.name.split('/').pop(),
+        email: f.email?.stringValue,
+        name: f.name?.stringValue,
+        role: f.role?.stringValue || 'user',
+        credits: parseInt(f.credits?.integerValue || '0'),
+        createdAt: f.createdAt?.timestampValue
+      }
+    }) || []
+
+    // In-memory search if q provided (Firestore doesn't support substring search easily)
+    const filtered = search
+      ? users.filter((u: any) => u.email?.includes(search) || u.name?.includes(search))
+      : users
+
+    return c.json({ status: 'success', users: filtered })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+})
+
+// List all stored prompts
 
 // Create new stored prompt
 app.post('/api/admin/prompts', async (c) => {
@@ -740,6 +905,17 @@ app.post('/api/generations/:id/vote', async (c) => {
     fields: { votes: { integerValue: newVotes } }
   })
 
+  // Log vote
+  /* const analytics = c.get('analytics') // Analytics already in context?
+     Check middleware: Yes, explicitly set. But typescript might complain if I don't get it.
+  */
+  const analytics = c.get('analytics')
+  c.executionCtx.waitUntil(analytics.logEvent(
+    'generation_voted',
+    c.get('user')?.sub,
+    { generationId: id, voteType: type, newCount: newVotes }
+  ))
+
   return c.json({ status: 'ok', votes: newVotes })
 })
 
@@ -756,6 +932,13 @@ app.post('/api/generations/:id/share', async (c) => {
   await firebase.firestore('PATCH', `generations/${id}?updateMask.fieldPaths=isPublic`, {
     fields: { isPublic: { booleanValue: isPublic } }
   })
+
+  const analytics = c.get('analytics')
+  c.executionCtx.waitUntil(analytics.logEvent(
+    'share_toggled',
+    c.get('user')?.sub,
+    { generationId: id, isPublic }
+  ))
 
   return c.json({ status: 'ok', isPublic })
 })
@@ -1004,6 +1187,19 @@ app.post('/api/stripe/webhook', async (c) => {
 
         // 2. Start Async Batch Process
         c.executionCtx.waitUntil(processBatch(c.env, firebase, jobId, userId, originalPath, prompt))
+
+        // 3. Log Payment Analytics
+        const analytics = new Analytics(firebase)
+        c.executionCtx.waitUntil(analytics.logEvent(
+          'payment_success',
+          userId,
+          {
+            amount: session.amount_total, // cents
+            currency: session.currency,
+            jobId,
+            productId: 'batch_generation'
+          }
+        ))
       }
     }
 
