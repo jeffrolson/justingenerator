@@ -110,6 +110,7 @@ export function Login() {
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all"
                                 placeholder="name@example.com"
+                                autoComplete="email"
                             />
                         </div>
                     </div>
@@ -127,6 +128,7 @@ export function Login() {
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all"
                                 placeholder="••••••••"
+                                autoComplete="current-password"
                             />
                         </div>
                     </div>

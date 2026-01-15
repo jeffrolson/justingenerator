@@ -12,6 +12,7 @@ function AppContent() {
   const { user, loading, backendUser } = useAuth(); // Added backendUser here
   const [remixItem, setRemixItem] = useState(null);
   const path = window.location.pathname;
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
   // Handle post-login remix redirect
   useEffect(() => {
@@ -20,9 +21,24 @@ function AppContent() {
       if (pending) {
         const action = JSON.parse(pending);
         if (action.type === 'remix') {
-          // In a real app we'd fetch the full item here, but for now we'll just pass the ID
-          // Dashboard will handle fetching details if needed, or we just pass the ID.
-          setRemixItem({ id: action.id });
+          // Fetch full item details to ensure we have the image URL
+          fetch(`${apiUrl}/api/public/share/${action.id}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.status === 'success' && data.generation) {
+                setRemixItem(data.generation);
+              } else {
+                // Fallback if not found (maybe it's a preset? Presets don't have this endpoint usually)
+                // If it's a preset, we might need a different lookup or just pass ID and hope Dashboard handles it?
+                // Actually, for presets, the ID is like 'cyberpunk'. 
+                // Let's check if the ID looks like a preset.
+                setRemixItem({ id: action.id });
+              }
+            })
+            .catch(err => {
+              console.error("Failed to restore remix item:", err);
+              setRemixItem({ id: action.id });
+            });
         }
         localStorage.removeItem('redirectAction');
       }

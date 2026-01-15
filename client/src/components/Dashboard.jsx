@@ -492,7 +492,15 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                             {remixSource ? (
                                 <div className="p-4 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex gap-4 items-center animate-fade-in-up">
                                     <div className="w-16 h-16 rounded-lg overflow-hidden border border-white/10 shrink-0">
-                                        <img src={getImageUrl(remixSource.imageUrl, apiUrl)} alt="Remix Source" className="w-full h-full object-cover" />
+                                        <img
+                                            src={getImageUrl(remixSource.imageUrl, apiUrl)}
+                                            alt="Remix Source"
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                console.error('Remix source load error:', remixSource.imageUrl);
+                                                e.target.src = 'https://placehold.co/100x100?text=Error';
+                                            }}
+                                        />
                                     </div>
                                     <div className="flex-grow">
                                         <p className="text-sm font-bold text-violet-300">Selected Style</p>
