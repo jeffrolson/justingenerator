@@ -401,6 +401,12 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                             <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider">Add</span>
                         </button>
                     </div>
+                    <div className="flex flex-col items-end gap-1 px-4 border-l border-white/10">
+                        <span className="text-slate-400 text-[10px] font-medium leading-none">Logged in as</span>
+                        <span className="text-slate-200 text-xs font-bold leading-none truncate max-w-[120px] md:max-w-none" title={user?.email}>
+                            {user?.email}
+                        </span>
+                    </div>
                     <button
                         onClick={logout}
                         className="text-slate-400 hover:text-white transition-colors flex items-center gap-2 text-[10px] md:text-sm font-medium"

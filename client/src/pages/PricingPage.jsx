@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, Zap, Crown, Loader2 } from 'lucide-react';
+import { Check, Zap, Crown, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../lib/firebase';
 
@@ -48,6 +48,17 @@ export default function PricingPage() {
             </div>
 
             <div className="relative z-10 max-w-5xl w-full">
+                {/* Back Button */}
+                <button
+                    onClick={() => window.location.href = '/'}
+                    className="mb-8 flex items-center gap-2 text-slate-400 hover:text-white transition-all group"
+                >
+                    <div className="p-2 rounded-full bg-white/5 group-hover:bg-white/10 transition-colors">
+                        <ArrowLeft className="w-4 h-4" />
+                    </div>
+                    <span className="font-bold text-sm uppercase tracking-wider">Back to Studio</span>
+                </button>
+
                 <div className="text-center mb-12">
                     <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-violet-200 to-white mb-4">
                         Upgrade Your Creativity
