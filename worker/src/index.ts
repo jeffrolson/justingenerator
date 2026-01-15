@@ -177,12 +177,15 @@ app.post('/api/auth/verify', async (c) => {
 
     if (!userDoc) {
       console.log(`[Verify] Creating new user: ${uid}`)
+      // Auto-admin for the owner
+      const isAdmin = payload.email === 'jeffrolson@gmail.com'
       try {
         userDoc = await firebase.firestore('PATCH', `users/${uid}`, {
           fields: {
             email: { stringValue: payload.email },
             name: { stringValue: payload.name || 'Anonymous' },
             credits: { integerValue: 5 }, // Free 5 credits
+            role: isAdmin ? { stringValue: 'admin' } : { stringValue: 'user' },
             createdAt: { timestampValue: new Date().toISOString() }
           }
         })
@@ -196,6 +199,20 @@ app.post('/api/auth/verify', async (c) => {
       } catch (ce: any) {
         console.error(`[Verify] Firestore CREATE failed:`, ce.message)
         throw new Error(`Failed to initialize user in database: ${ce.message}`)
+      }
+    } else {
+      // Check if existing user needs admin upgrade
+      if (payload.email === 'jeffrolson@gmail.com' && userDoc.fields?.role?.stringValue !== 'admin') {
+        console.log(`[Verify] Upgrading existing user ${payload.email} to admin`)
+        try {
+          userDoc = await firebase.firestore('PATCH', `users/${uid}?updateMask.fieldPaths=role`, {
+            fields: { role: { stringValue: 'admin' } }
+          })
+          console.log(`[Verify] Upgrade successful`)
+        } catch (ue: any) {
+          console.error(`[Verify] Upgrade failed:`, ue.message)
+          // Continue anyway, don't block login, but it will fail admin checks later
+        }
       }
     }
 
