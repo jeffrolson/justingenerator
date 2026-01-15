@@ -64,11 +64,13 @@ export function PromptManager() {
         setShowForm(true);
     };
 
-    const resetForm = () => {
+    const resetForm = (shouldClose = true) => {
         setFormData({ name: '', prompt: '', tags: '', image: null });
         setPreviewUrl(null);
         setEditingId(null);
-        setShowForm(false);
+        if (shouldClose && shouldClose !== false) {
+            setShowForm(false);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -219,6 +221,15 @@ export function PromptManager() {
         p.prompt?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const handleAddPreset = () => {
+        if (showForm) {
+            resetForm();
+        } else {
+            resetForm(false);
+            setShowForm(true);
+        }
+    };
+
     return (
         <div className="text-white max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -240,7 +251,7 @@ export function PromptManager() {
                         <span className="text-sm font-medium">Export CSV</span>
                     </button>
                     <button
-                        onClick={() => { resetForm(); setShowForm(!showForm); }}
+                        onClick={handleAddPreset}
                         className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg transition-colors shadow-lg shadow-violet-900/20"
                     >
                         {showForm ? <X size={20} /> : <Plus size={20} />}
