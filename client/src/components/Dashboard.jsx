@@ -382,7 +382,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                         </div>
                         <div className="h-6 w-px bg-white/10 mx-1"></div>
                         <button
-                            onClick={handleBuyCredits}
+                            onClick={() => window.location.href = '/pricing'}
                             className="bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-full transition-all hover:scale-105 flex items-center gap-1.5 shadow-lg shadow-violet-600/20"
                             title="Add Credits"
                         >

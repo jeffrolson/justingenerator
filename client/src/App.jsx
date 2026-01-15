@@ -5,6 +5,8 @@ import { Dashboard } from './components/Dashboard';
 import { ShareView } from './components/ShareView';
 import { ExploreFeed } from './components/ExploreFeed';
 import { AdminDashboard } from './components/AdminDashboard';
+import PricingPage from './pages/PricingPage';
+
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -54,9 +56,16 @@ function AppContent() {
     return <ExploreFeed onRemix={(item) => setRemixItem(item)} />;
   }
 
+
+
   // Admin Portal (Auth guarded)
   if (path === '/admin') {
     return user ? <AdminDashboard /> : <Login />;
+  }
+
+  // Pricing Page (Auth guarded)
+  if (path === '/pricing') {
+    return user ? <PricingPage /> : <Login />;
   }
 
   // Explicit Explore Route (Public/Private)

@@ -233,14 +233,39 @@ app.post('/api/generate', async (c) => {
   const user = c.get('user')
   const firebase = c.get('firebase')
 
-  // 1. Check credits
+  // 1. Check/Reset Credits & Subscription
   const userDoc: any = await firebase.firestore('GET', `users/${user.sub}`)
-  const credits = parseInt(userDoc.fields?.credits?.integerValue || '0')
+  let credits = parseInt(userDoc.fields?.credits?.integerValue || '0')
+  const subscriptionStatus = userDoc.fields?.subscriptionStatus?.stringValue
+  const subscriptionEnd = userDoc.fields?.subscriptionEnd?.timestampValue
+  const lastCreditReset = userDoc.fields?.lastCreditReset?.timestampValue
+
+  // Check Monthly Reset (Free Tier)
+  const now = new Date()
+  const lastResetDate = lastCreditReset ? new Date(lastCreditReset) : new Date(0)
+  const isPro = subscriptionStatus === 'active' && subscriptionEnd && new Date(subscriptionEnd) > now
+
+  // If not pro, check if month passed since last reset
+  if (!isPro && (now.getTime() - lastResetDate.getTime() > 30 * 24 * 60 * 60 * 1000)) {
+    if (credits < 5) {
+      credits = 5
+      c.executionCtx.waitUntil(firebase.firestore('PATCH', `users/${user.sub}`, {
+        fields: {
+          credits: { integerValue: 5 },
+          lastCreditReset: { timestampValue: now.toISOString() }
+        }
+      }))
+    }
+  }
+
   const analytics = c.get('analytics')
 
-  if (credits < 1) {
-    c.executionCtx.waitUntil(analytics.logEvent('generate_failed', user.sub, { reason: 'insufficient_credits', credits }))
-    return c.json({ error: 'Insufficient credits' }, 402)
+  // Deduct credit if NOT pro
+  if (!isPro) {
+    if (credits < 1) {
+      c.executionCtx.waitUntil(analytics.logEvent('generate_failed', user.sub, { reason: 'insufficient_credits', credits }))
+      return c.json({ error: 'Insufficient credits' }, 402)
+    }
   }
 
   // 2. Handle Upload
@@ -512,7 +537,7 @@ app.post('/api/generate', async (c) => {
   return c.json({
     status: 'success',
     genId,
-    remainingCredits: credits - 1,
+    remainingCredits: isPro ? 'Unlimited' : credits - 1,
     imageUrl: `/api/image/${encodeURIComponent(resultPath)}`,
     summary,
     tags
@@ -1274,22 +1299,27 @@ app.get('/api/image/:path', async (c) => {
 })
 
 // Stripe: Create Checkout Session
+// Stripe: Create Checkout Session
 app.post('/api/stripe/checkout', async (c) => {
   const stripe = getStripe(c.env)
   const user = c.get('user')
   const { priceId } = await c.req.json() as { priceId: string }
 
+  // Determine mode based on Price ID (Hardcoded for simplicity or check recurring)
+  // Pro Sub Price ID: price_1Spj39FYNUGeLOIpFYcccsqI
+  const isSubscription = priceId === 'price_1Spj39FYNUGeLOIpFYcccsqI';
+  const mode = isSubscription ? 'subscription' : 'payment';
+
   try {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
-      mode: 'payment',
-      success_url: `${c.req.header('origin')}/success`,
-      cancel_url: `${c.req.header('origin')}/cancel`,
+      mode: mode,
+      success_url: `${c.req.header('origin')}/?checkout=success`, // Redirect to dashboard
+      cancel_url: `${c.req.header('origin')}/pricing?checkout=cancel`,
       metadata: {
         userId: user.sub,
-        originalPath: (await c.req.json() as any).originalPath,
-        prompt: (await c.req.json() as any).prompt
+        type: mode === 'subscription' ? 'pro_sub' : 'credit_pack'
       }
     })
     return c.json({ url: session.url })
@@ -1308,54 +1338,48 @@ app.post('/api/stripe/webhook', async (c) => {
 
   try {
     const event = await stripe.webhooks.constructEventAsync(body, signature, c.env.STRIPE_WEBHOOK_SECRET)
+    const firebase = new Firebase(c.env)
+    const analytics = new Analytics(firebase)
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as any
       const userId = session.metadata?.userId
-      const originalPath = session.metadata?.originalPath
-      const prompt = session.metadata?.prompt || 'A stylized portrait'
+      const type = session.metadata?.type // 'credit_pack' | 'pro_sub'
 
-      if (userId && originalPath) {
-        const firebase = new Firebase(c.env)
-        const jobId = crypto.randomUUID()
+      if (userId) {
+        if (type === 'credit_pack') {
+          // Increment Credits (Read-Modify-Write)
+          const userDoc: any = await firebase.firestore('GET', `users/${userId}`)
+          const current = parseInt(userDoc.fields?.credits?.integerValue || '0')
+          const currentSpent = parseFloat(userDoc.fields?.totalSpent?.doubleValue || '0')
 
-        // 1. Create Job record
-        await firebase.firestore('PATCH', `jobs/${jobId}`, {
-          fields: {
-            userId: { stringValue: userId },
-            status: { stringValue: 'processing' },
-            total_images: { integerValue: 10 },
-            completed_images: { integerValue: 0 },
-            results: { arrayValue: { values: [] } },
-            originalPath: { stringValue: originalPath },
-            prompt: { stringValue: prompt },
-            createdAt: { timestampValue: new Date().toISOString() }
-          }
-        })
+          await firebase.firestore('PATCH', `users/${userId}`, {
+            fields: {
+              credits: { integerValue: current + 10 },
+              totalSpent: { doubleValue: currentSpent + (session.amount_total / 100) }
+            }
+          })
+        } else if (type === 'pro_sub') {
+          // Activate Subscription
+          await firebase.firestore('PATCH', `users/${userId}`, {
+            fields: {
+              subscriptionStatus: { stringValue: 'active' },
+              subscriptionEnd: { timestampValue: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() },
+              subscriptionId: { stringValue: session.subscription }
+            }
+          })
+        }
 
-        // 2. Start Async Batch Process
-        c.executionCtx.waitUntil(processBatch(c.env, firebase, jobId, userId, originalPath, prompt))
-
-        // 3. Log Payment Analytics
-        const analytics = new Analytics(firebase)
-        c.executionCtx.waitUntil(analytics.logEvent(
-          'payment_success',
-          userId,
-          {
-            amount: session.amount_total, // cents
-            currency: session.currency,
-            jobId,
-            productId: 'batch_generation'
-          }
-        ))
+        c.executionCtx.waitUntil(analytics.logEvent('payment_success', userId, { amount: session.amount_total, type }))
       }
     }
 
-    return c.text('Received')
+    return c.text('OK')
   } catch (e: any) {
     return c.text(`Webhook Error: ${e.message}`, 400)
   }
 })
+
 
 
 async function processBatch(env: Bindings, firebase: Firebase, jobId: string, userId: string, originalPath: string, basePrompt: string) {
