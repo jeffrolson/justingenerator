@@ -13,7 +13,9 @@ export const getImageUrl = (path, apiUrl) => {
 
     // If it's an example image, it's served from the public folder (skips R2/API proxy)
     if (path.startsWith('/examples/')) {
-        return path;
+        // Return full origin path to ensure it loads correctly on all devices including mobile
+        const origin = window.location.origin;
+        return `${origin}${path}`;
     }
 
     // Ensure apiUrl doesn't have a trailing slash

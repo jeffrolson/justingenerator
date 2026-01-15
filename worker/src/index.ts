@@ -1249,9 +1249,9 @@ app.get('/api/public/feed', async (c) => {
       feed = results.map((g: any) => ({
         id: g.id,
         summary: g.summary?.stringValue || g.prompt?.stringValue?.substring(0, 30),
-        imageUrl: g.resultPath?.stringValue?.startsWith('http')
+        imageUrl: (g.resultPath?.stringValue?.startsWith('http') || g.resultPath?.stringValue?.startsWith('/examples/'))
           ? g.resultPath.stringValue
-          : `/api/image/${encodeURIComponent(g.resultPath?.stringValue)}`,
+          : `/api/image/${encodeURIComponent(g.resultPath?.stringValue || '')}`,
         likesCount: parseInt(g.likesCount?.integerValue || '0'),
         bookmarksCount: parseInt(g.bookmarksCount?.integerValue || '0'),
         createdAt: g.createdAt?.timestampValue
