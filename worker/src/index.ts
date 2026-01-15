@@ -981,41 +981,32 @@ app.get('/api/jobs/active', async (c) => {
   const firebase = c.get('firebase')
 
   try {
+    // Query only by userId and orderBy createdAt to get the latest job.
+    // We omit the 'status' filter to avoid requiring a composite index.
     const results = await firebase.query('jobs', {
       where: {
-        compositeFilter: {
-          op: 'AND',
-          filters: [
-            {
-              fieldFilter: {
-                field: { fieldPath: 'userId' },
-                op: 'EQUAL',
-                value: { stringValue: user.sub }
-              }
-            },
-            {
-              fieldFilter: {
-                field: { fieldPath: 'status' },
-                op: 'EQUAL',
-                value: { stringValue: 'processing' }
-              }
-            }
-          ]
+        fieldFilter: {
+          field: { fieldPath: 'userId' },
+          op: 'EQUAL',
+          value: { stringValue: user.sub }
         }
       },
       orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
-      limit: 1
+      limit: 5 // Get a few recent ones to find an active one
     })
 
-    if (results.length > 0) {
-      const job = results[0]
+    const activeJob = results.find((j: any) => j.status?.stringValue === 'processing') ||
+      results.find((j: any) => j.status?.stringValue === 'completed' &&
+        (new Date().getTime() - new Date(j.createdAt?.timestampValue).getTime() < 30000));
+
+    if (activeJob) {
       return c.json({
         job: {
-          id: job.id,
-          status: job.status?.stringValue,
-          completed: parseInt(job.completed_images?.integerValue || '0'),
-          total: parseInt(job.total_images?.integerValue || '10'),
-          results: job.results?.arrayValue?.values?.map((v: any) => v.stringValue) || []
+          id: activeJob.id,
+          status: activeJob.status?.stringValue,
+          completed: parseInt(activeJob.completed_images?.integerValue || '0'),
+          total: parseInt(activeJob.total_images?.integerValue || '10'),
+          results: activeJob.results?.arrayValue?.values?.map((v: any) => v.stringValue) || []
         }
       })
     }

@@ -483,8 +483,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                         <img src={getImageUrl(remixSource.imageUrl, apiUrl)} alt="Remix Source" className="w-full h-full object-cover" />
                                     </div>
                                     <div className="flex-grow">
-                                        <p className="text-sm font-bold text-violet-300">Remixing Original Prompt</p>
-                                        <p className="text-xs text-slate-400">The underlying prompt is hidden to maintain the magic.</p>
+                                        <p className="text-sm font-bold text-violet-300">Selected Style</p>
                                     </div>
                                     <button
                                         onClick={() => { setRemixSource(null); onClearRemix?.(); }}
