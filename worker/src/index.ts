@@ -1352,7 +1352,7 @@ app.get('/api/public/feed', async (c) => {
 
   return c.json({
     status: 'success',
-    feed: [...seedFeed, ...feed]
+    feed: [...feed, ...seedFeed]
   })
 })
 
