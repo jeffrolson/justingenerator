@@ -4,6 +4,7 @@ import { LayoutDashboard, Users, Image as ImageIcon, Settings, LogOut, ArrowLeft
 import { Overview } from './admin/Overview';
 import { UserManager } from './admin/UserManager';
 import { PromptManager } from './admin/PromptManager';
+import { Settings as SettingsComponent } from './admin/Settings';
 
 export function AdminDashboard() {
     const { user, logout } = useAuth();
@@ -21,6 +22,7 @@ export function AdminDashboard() {
             case 'overview': return <Overview />;
             case 'users': return <UserManager />;
             case 'content': return <PromptManager />;
+            case 'settings': return <SettingsComponent />;
             default: return <div className="text-gray-400">Functionality coming soon...</div>;
         }
     };

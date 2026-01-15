@@ -1,5 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
+import {
+    GoogleAuthProvider,
+    signInWithPopup,
+    onAuthStateChanged,
+    signOut,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    updateProfile
+} from 'firebase/auth';
 import { auth } from '../lib/firebase';
 
 const AuthContext = createContext();
@@ -67,6 +75,31 @@ export function AuthProvider({ children }) {
         return signInWithPopup(auth, provider);
     };
 
+    const loginWithEmail = (email, password) => {
+        return signInWithEmailAndPassword(auth, email, password);
+    };
+
+    const register = async (email, password, firstName, lastName) => {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const displayName = `${firstName} ${lastName}`.trim();
+        await updateProfile(userCredential.user, { displayName });
+
+        // Immediately sync with backend to ensure names are captured
+        try {
+            const token = await userCredential.user.getIdToken();
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+            await fetch(`${apiUrl}/api/auth/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, firstName, lastName })
+            });
+        } catch (e) {
+            console.error("Manual sync during registration failed:", e);
+        }
+
+        return userCredential;
+    };
+
     const logout = () => {
         return signOut(auth);
     };
@@ -76,6 +109,8 @@ export function AuthProvider({ children }) {
         backendUser,
         loading,
         login,
+        loginWithEmail,
+        register,
         logout,
         getToken: async () => user ? user.getIdToken() : null
     };

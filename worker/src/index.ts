@@ -163,7 +163,8 @@ app.post('/api/auth/verify', async (c) => {
     console.log(`[Verify] Verifying token (length: ${token.length})`)
     const payload = await firebase.verifyToken(token)
     const uid = payload.sub
-    console.log(`[Verify] Token verified for UID: ${uid}`)
+    const { firstName, lastName } = body
+    console.log(`[Verify] Token verified for UID: ${uid}. Name metadata:`, { firstName, lastName })
 
     // 2. Fetch/Create User in Firestore
     let userDoc: any
@@ -177,13 +178,26 @@ app.post('/api/auth/verify', async (c) => {
 
     if (!userDoc) {
       console.log(`[Verify] Creating new user: ${uid}`)
-      // Auto-admin for the owner
+      // If names weren't provided in body (e.g. Google login), try to parse from payload.name
+      let fName = firstName
+      let lName = lastName
       const isAdmin = payload.email === 'jeffrolson@gmail.com'
+
+      if (!fName && !lName && payload.name) {
+        const parts = (payload.name as string).split(' ')
+        fName = parts[0]
+        lName = parts.slice(1).join(' ') || ''
+      }
+
+      // Auto-admin for the owner
+
       try {
         userDoc = await firebase.firestore('PATCH', `users/${uid}`, {
           fields: {
             email: { stringValue: payload.email },
-            name: { stringValue: payload.name || 'Anonymous' },
+            name: { stringValue: (payload.name as string) || `${fName} ${lName}`.trim() || 'Anonymous' },
+            firstName: { stringValue: fName || '' },
+            lastName: { stringValue: lName || '' },
             credits: { integerValue: 5 }, // Free 5 credits
             role: isAdmin ? { stringValue: 'admin' } : { stringValue: 'user' },
             createdAt: { timestampValue: new Date().toISOString() }
@@ -383,14 +397,24 @@ app.post('/api/generate', async (c) => {
       throw new Error('GEMINI_API_KEY is not configured')
     }
 
-    console.log(`Starting generation with prompt: ${prompt}`)
+    // Fetch model from settings
+    let imageModel = 'gemini-2.5-flash-image'
+    try {
+      const settingsDoc: any = await firebase.firestore('GET', 'settings/config')
+      if (settingsDoc?.fields?.imageModel?.stringValue) {
+        imageModel = settingsDoc.fields.imageModel.stringValue
+      }
+    } catch (e) {
+      console.warn('Failed to fetch image model from settings, using default', e)
+    }
+
+    console.log(`Starting generation with model: ${imageModel}, prompt: ${prompt}`)
 
     const fileData = await file.arrayBuffer()
     // Use Buffer for more efficient Base64 conversion (requires nodejs_compat)
     const base64Image = Buffer.from(fileData).toString('base64')
 
-    // Using gemini-2.5-flash-image for speed (Nano Banana)
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${c.env.GEMINI_API_KEY}`
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${c.env.GEMINI_API_KEY}`
 
     const response = await fetch(geminiUrl, {
       method: 'POST',
@@ -816,6 +840,41 @@ app.post('/api/admin/prompts', async (c) => {
   })
 
   return c.json({ status: 'success', id: promptId })
+})
+
+
+// Add these Settings endpoints:
+
+// Get Settings
+app.get('/api/admin/settings', async (c) => {
+  const firebase = c.get('firebase')
+  try {
+    const doc: any = await firebase.firestore('GET', 'settings/config').catch(() => null)
+    const model = doc?.fields?.imageModel?.stringValue || 'gemini-2.5-flash-image'
+    return c.json({ status: 'success', settings: { imageModel: model } })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+})
+
+// Update Settings
+app.post('/api/admin/settings', async (c) => {
+  const firebase = c.get('firebase')
+  const { imageModel } = await c.req.json() as { imageModel: string }
+
+  if (!imageModel) return c.json({ error: 'Missing imageModel' }, 400)
+
+  try {
+    await firebase.firestore('PATCH', 'settings/config', {
+      fields: {
+        imageModel: { stringValue: imageModel },
+        updatedAt: { timestampValue: new Date().toISOString() }
+      }
+    })
+    return c.json({ status: 'success' })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
 })
 
 // Update existing stored prompt
@@ -1462,10 +1521,21 @@ async function processBatch(env: Bindings, firebase: Firebase, jobId: string, us
     const originalBuffer = await object.arrayBuffer()
     const base64Image = Buffer.from(originalBuffer).toString('base64')
 
+    // Fetch model from settings
+    let imageModel = 'gemini-2.5-flash-image'
+    try {
+      const settingsDoc: any = await firebase.firestore('GET', 'settings/config')
+      if (settingsDoc?.fields?.imageModel?.stringValue) {
+        imageModel = settingsDoc.fields.imageModel.stringValue
+      }
+    } catch (e) {
+      console.warn('Batch: Failed to fetch image model from settings, using default', e)
+    }
+
     for (let i = 0; i < prompts.length; i++) {
       try {
         const prompt = prompts[i]
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${env.GEMINI_API_KEY}`
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${env.GEMINI_API_KEY}`
 
         const response = await fetch(geminiUrl, {
           method: 'POST',
