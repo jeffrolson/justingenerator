@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Save, RefreshCcw, ShieldCheck, Cpu } from 'lucide-react';
+import { Save, RefreshCcw, ShieldCheck, Cpu, MessageCircle } from 'lucide-react';
 
 export function Settings() {
     const { getToken } = useAuth();
@@ -84,8 +84,8 @@ export function Settings() {
                         <label
                             key={model.id}
                             className={`flex items-start gap-4 p-4 rounded-xl border transition-all cursor-pointer ${settings.imageModel === model.id
-                                    ? 'bg-violet-600/10 border-violet-500/50 text-white'
-                                    : 'bg-black/20 border-white/5 text-gray-400 hover:border-white/20'
+                                ? 'bg-violet-600/10 border-violet-500/50 text-white'
+                                : 'bg-black/20 border-white/5 text-gray-400 hover:border-white/20'
                                 }`}
                         >
                             <input
@@ -126,15 +126,103 @@ export function Settings() {
                 </div>
             </div>
 
+            {/* Telegram Settings */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-blue-500/20 rounded-lg text-blue-300">
+                        <MessageCircle size={24} />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold text-white">Telegram Notifications</h3>
+                        <p className="text-gray-400 text-sm">Manage real-time alerts sent to your admin channel</p>
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    {/* Master Toggle */}
+                    <div className="flex items-center justify-between p-4 rounded-xl bg-black/20 border border-white/5">
+                        <div>
+                            <div className="font-semibold text-white">Enable Notifications</div>
+                            <div className="text-sm text-gray-500">Master switch for all Telegram alerts</div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={settings.telegram?.enabled ?? true}
+                                onChange={(e) => setSettings({
+                                    ...settings,
+                                    telegram: { ...settings.telegram, enabled: e.target.checked }
+                                })}
+                            />
+                            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+
+                    {/* Event Selection */}
+                    <div className={`space-y-3 transition-opacity duration-300 ${!settings.telegram?.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <div className="text-sm font-semibold text-gray-400 uppercase tracking-wider pl-1">Notification Events</div>
+
+                        <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
+                            <input
+                                type="checkbox"
+                                className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
+                                checked={settings.telegram?.events?.includes('signup') ?? true}
+                                onChange={(e) => {
+                                    const currentEvents = settings.telegram?.events || ['signup'];
+                                    const newEvents = e.target.checked
+                                        ? [...currentEvents, 'signup']
+                                        : currentEvents.filter(ev => ev !== 'signup');
+                                    setSettings({
+                                        ...settings,
+                                        telegram: { ...settings.telegram, events: newEvents }
+                                    });
+                                }}
+                            />
+                            <div>
+                                <div className="text-white font-medium">New User Signup</div>
+                                <div className="text-xs text-gray-500">Get alerted whenever a new user registers</div>
+                            </div>
+                        </label>
+                    </div>
+
+                    {/* Test Button */}
+                    <div className="pt-4 border-t border-white/10">
+                        <button
+                            onClick={async () => {
+                                try {
+                                    setMessage({ type: 'info', text: 'Sending test message...' });
+                                    const token = await getToken();
+                                    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/test-telegram`, {
+                                        method: 'POST',
+                                        headers: { Authorization: `Bearer ${token}` }
+                                    });
+                                    if (res.ok) {
+                                        setMessage({ type: 'success', text: 'Test message sent! Check your Telegram.' });
+                                    } else {
+                                        const err = await res.json();
+                                        throw new Error(err.error || 'Failed to send test');
+                                    }
+                                } catch (e) {
+                                    setMessage({ type: 'error', text: `Test failed: ${e.message}` });
+                                }
+                            }}
+                            className="text-sm font-medium text-blue-400 hover:text-blue-300 flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-blue-500/10 transition-colors w-fit"
+                        >
+                            <span className="text-lg">🔔</span> Send Test Notification
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-6 flex gap-4">
                 <div className="p-2 bg-amber-500/20 rounded-lg h-fit text-amber-500">
                     <RefreshCcw size={20} />
                 </div>
                 <div>
-                    <h4 className="font-semibold text-white mb-1">Propagation Delay</h4>
+                    <h4 className="font-semibold text-white mb-1">Configuration Sync</h4>
                     <p className="text-sm text-gray-400">
-                        Changes to the image model take effect immediately for all new generation requests.
-                        Ongoing batch jobs will continue using the model configured at the start of the job.
+                        Settings are cached globally. Updates may take a few seconds to propagate to all edge nodes.
                     </p>
                 </div>
             </div>

@@ -223,11 +223,21 @@ app.post('/api/auth/verify', async (c) => {
 📧 *Email:* ${notificationEmail}
 🆔 *UID:* \`${uid}\``;
 
-        c.executionCtx.waitUntil(sendTelegramMessage(
-          c.env.TELEGRAM_BOT_TOKEN || '',
-          c.env.TELEGRAM_CHAT_ID || '',
-          notificationMessage
-        ));
+        if (c.env.TELEGRAM_BOT_TOKEN && c.env.TELEGRAM_CHAT_ID) {
+          // Check settings before sending
+          const settingsDoc: any = await firebase.firestore('GET', 'settings/config').catch(() => null)
+          const telegramSettings = settingsDoc?.fields?.telegram?.mapValue?.fields
+          const enabled = telegramSettings?.enabled?.booleanValue ?? true // Default to true if not set
+          const events = telegramSettings?.events?.arrayValue?.values?.map((v: any) => v.stringValue) || ['signup']
+
+          if (enabled && events.includes('signup')) {
+            c.executionCtx.waitUntil(sendTelegramMessage(
+              c.env.TELEGRAM_BOT_TOKEN,
+              c.env.TELEGRAM_CHAT_ID,
+              notificationMessage
+            ));
+          }
+        }
       } catch (ce: any) {
         console.error(`[Verify] Firestore CREATE failed:`, ce.message)
         throw new Error(`Failed to initialize user in database: ${ce.message}`)
@@ -966,26 +976,70 @@ app.get('/api/admin/settings', async (c) => {
   try {
     const doc: any = await firebase.firestore('GET', 'settings/config').catch(() => null)
     const model = doc?.fields?.imageModel?.stringValue || 'gemini-2.5-flash-image'
-    return c.json({ status: 'success', settings: { imageModel: model } })
+    const telegram = {
+      enabled: doc?.fields?.telegram?.mapValue?.fields?.enabled?.booleanValue ?? true,
+      events: doc?.fields?.telegram?.mapValue?.fields?.events?.arrayValue?.values?.map((v: any) => v.stringValue) || ['signup']
+    }
+    return c.json({ status: 'success', settings: { imageModel: model, telegram } })
   } catch (e: any) {
     return c.json({ error: e.message }, 500)
   }
 })
 
 // Update Settings
+// Update Settings
 app.post('/api/admin/settings', async (c) => {
   const firebase = c.get('firebase')
-  const { imageModel } = await c.req.json() as { imageModel: string }
-
-  if (!imageModel) return c.json({ error: 'Missing imageModel' }, 400)
+  const { imageModel, telegram } = await c.req.json() as { imageModel?: string, telegram?: any }
 
   try {
-    await firebase.firestore('PATCH', 'settings/config', {
-      fields: {
-        imageModel: { stringValue: imageModel },
-        updatedAt: { timestampValue: new Date().toISOString() }
+    const fields: any = {
+      updatedAt: { timestampValue: new Date().toISOString() }
+    }
+
+    if (imageModel) fields.imageModel = { stringValue: imageModel }
+    if (telegram) {
+      fields.telegram = {
+        mapValue: {
+          fields: {
+            enabled: { booleanValue: telegram.enabled },
+            events: {
+              arrayValue: {
+                values: (telegram.events || []).map((e: string) => ({ stringValue: e }))
+              }
+            }
+          }
+        }
       }
-    })
+    }
+
+    await firebase.firestore('PATCH', 'settings/config', { fields })
+    return c.json({ status: 'success' })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+})
+
+// Test Telegram Notification
+app.post('/api/admin/test-telegram', async (c) => {
+  const user = c.get('user')
+  const firebase = c.get('firebase')
+
+  // Double check admin role? Middleware already checks user existence, but role check is good.
+  const userDoc: any = await firebase.firestore('GET', `users/${user.sub}`)
+  if (userDoc?.fields?.role?.stringValue !== 'admin') {
+    return c.json({ error: 'Unauthorized' }, 403)
+  }
+
+  const token = c.env.TELEGRAM_BOT_TOKEN
+  const chatId = c.env.TELEGRAM_CHAT_ID
+
+  if (!token || !chatId) {
+    return c.json({ error: 'Telegram credentials missing in worker environment.' }, 500)
+  }
+
+  try {
+    await sendTelegramMessage(token, chatId, "🔔 *Test Notification*\n\nThis is a test message from your Admin Portal. If you prefer, you can disable these in Settings.")
     return c.json({ status: 'success' })
   } catch (e: any) {
     return c.json({ error: e.message }, 500)
