@@ -1024,116 +1024,116 @@ app.get('/api/jobs/active', async (c) => {
 })
 
 // Fetch history
+// Fetch history
 app.get('/api/generations', async (c) => {
   const user = c.get('user')
   const firebase = c.get('firebase')
   const filter = c.req.query('filter') || 'my' // 'my', 'likes', 'bookmarks'
   const tag = c.req.query('tag')
+  const q = c.req.query('q')
 
   try {
-    let structuredQuery: any = {
-      from: [{ collectionId: 'generations' }],
-      // Remove orderBy to avoid index requirement
-      // limit: 50 // We'll limit after filtering
-    }
+    // 1. Fetch user's likes and bookmarks IDs first (useful for flags and for filtering)
+    const [likesRes, bookmarksRes]: any[] = await Promise.all([
+      firebase.firestore('GET', `users/${user.sub}/likes`).catch(() => ({ documents: [] })),
+      firebase.firestore('GET', `users/${user.sub}/bookmarks`).catch(() => ({ documents: [] }))
+    ]);
 
-    const filters: any[] = []
+    const likedIds = new Set((likesRes?.documents || []).map((d: any) => d.name.split('/').pop()));
+    const bookmarkedIds = new Set((bookmarksRes?.documents || []).map((d: any) => d.name.split('/').pop()));
+
+    let results: any[] = [];
 
     if (filter === 'my') {
-      filters.push({ fieldFilter: { field: { fieldPath: 'userId' }, op: 'EQUAL', value: { stringValue: user.sub } } })
-      // Remove status filter here, do it in memory
-    }
-
-    // Tag filter can be kept if it doesn't require composite index with userId, 
-    // but to be safe and consistent, let's do it in memory if we are already doing in-memory sort
-    // However, fetching ALL user generations to filter for one tag might be expensive eventually.
-    // For now, let's keep it simple and safe.
-
-    if (filters.length > 0) {
-      if (filters.length === 1) {
-        structuredQuery.where = filters[0]
-      } else {
-        structuredQuery.where = {
-          compositeFilter: {
-            op: 'AND',
-            filters
-          }
-        }
-      }
-    }
-
-    // For likes/bookmarks, we fetch by ID, so query is different
-    if (filter === 'likes' || filter === 'bookmarks') {
-      // ... (existing logic for fetching IDs) ...
-      // 1. Fetch the IDs from the interaction subcollection
-      const interactionPath = `users/${user.sub}/${filter}`
-      const interactions: any = await firebase.firestore('GET', interactionPath)
-
-      if (!interactions || !interactions.documents || interactions.documents.length === 0) {
-        return c.json({ status: 'success', generations: [] })
-      }
-
-      const ids = interactions.documents.map((d: any) => d.name.split('/').pop())
-
-      // Use ID filter
-      const idFilter = {
-        fieldFilter: {
-          field: { fieldPath: '__name__' },
-          op: 'IN',
-          value: {
-            arrayValue: {
-              values: ids.map((id: string) => ({ stringValue: `projects/${firebase.projectId}/databases/${firebase.databaseId}/documents/generations/${id}` }))
-            }
-          }
-        }
-      }
-      structuredQuery.where = idFilter
-    }
-
-    let results = await firebase.query('generations', structuredQuery)
-
-    // In-memory Filter & Sort
-    if (filter === 'my') {
+      results = await firebase.query('generations', {
+        where: { fieldFilter: { field: { fieldPath: 'userId' }, op: 'EQUAL', value: { stringValue: user.sub } } }
+      });
+      // Filter for completed items
       results = results.filter((g: any) => g.status?.stringValue === 'completed');
+    } else {
+      // Filter by 'likes' or 'bookmarks'
+      const targetIds = Array.from(filter === 'likes' ? likedIds : bookmarkedIds);
+
+      if (targetIds.length > 0) {
+        // Chunk into groups of 30 for Firestore 'IN' limit
+        const chunks = [];
+        for (let i = 0; i < targetIds.length; i += 30) {
+          chunks.push(targetIds.slice(i, i + 30));
+        }
+
+        const queryPromises = chunks.map(chunk => {
+          return firebase.query('generations', {
+            where: {
+              fieldFilter: {
+                field: { fieldPath: '__name__' },
+                op: 'IN',
+                value: {
+                  arrayValue: {
+                    values: chunk.map((id: any) => ({
+                      stringValue: `projects/${firebase.projectId}/databases/${firebase.databaseId}/documents/generations/${id}`
+                    }))
+                  }
+                }
+              }
+            }
+          });
+        });
+
+        const queryResults = await Promise.all(queryPromises);
+        results = queryResults.flat();
+      }
     }
 
+    // 2. In-memory Filter (Tag and Search Query)
     if (tag) {
       const lowerTag = tag.toLowerCase();
       results = results.filter((g: any) =>
-        g.tags?.arrayValue?.values?.some((v: any) => v.stringValue === lowerTag)
+        g.tags?.arrayValue?.values?.some((v: any) => v.stringValue?.toLowerCase() === lowerTag)
       );
     }
 
-    // Sort by createdAt desc
+    if (q) {
+      const lowerQ = q.toLowerCase();
+      results = results.filter((g: any) =>
+        g.prompt?.stringValue?.toLowerCase().includes(lowerQ) ||
+        g.summary?.stringValue?.toLowerCase().includes(lowerQ) ||
+        g.tags?.arrayValue?.values?.some((v: any) => v.stringValue?.toLowerCase().includes(lowerQ))
+      );
+    }
+
+    // 3. Sort by createdAt desc
     results.sort((a: any, b: any) => {
       const dateA = new Date(a.createdAt?.timestampValue || 0).getTime();
       const dateB = new Date(b.createdAt?.timestampValue || 0).getTime();
       return dateB - dateA;
     });
 
-    // Apply limit
+    // 4. Apply limit
     results = results.slice(0, 50);
 
+    // 5. Build final response with flags
     return c.json({
       status: 'success',
       generations: results.map((g: any) => ({
         id: g.id,
         prompt: g.prompt?.stringValue,
         summary: g.summary?.stringValue || g.prompt?.stringValue?.substring(0, 30),
-        imageUrl: `/api/image/${encodeURIComponent(g.resultPath?.stringValue)}`,
+        imageUrl: `/api/image/${encodeURIComponent(g.resultPath?.stringValue || '')}`,
         tags: g.tags?.arrayValue?.values?.map((v: any) => v.stringValue) || [],
         createdAt: g.createdAt?.timestampValue,
         votes: parseInt(g.votes?.integerValue || '0'),
         likesCount: parseInt(g.likesCount?.integerValue || '0'),
         bookmarksCount: parseInt(g.bookmarksCount?.integerValue || '0'),
-        isPublic: g.isPublic?.booleanValue || false
+        isPublic: g.isPublic?.booleanValue || false,
+        isLiked: likedIds.has(g.id),
+        isBookmarked: bookmarkedIds.has(g.id)
       }))
-    })
+    });
   } catch (e: any) {
-    console.error('History fetch failed:', e.message)
-    return c.json({ error: 'Failed to fetch history', details: e.message }, 500)
+    console.error('History fetch failed:', e);
+    return c.json({ error: 'Failed to fetch history', details: e.message }, 500);
   }
-})
+});
 
 // Vote on generation
 app.post('/api/generations/:id/vote', async (c) => {
