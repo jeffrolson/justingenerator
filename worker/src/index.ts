@@ -181,26 +181,42 @@ app.post('/api/auth/verify', async (c) => {
 
     if (!userDoc) {
       console.log(`[Verify] Creating new user: ${uid}`)
-      // If names weren't provided in body (e.g. Google login), try to parse from payload.name
-      let fName = firstName
-      let lName = lastName
-      const isAdmin = payload.email === 'jeffrolson@gmail.com'
 
-      if (!fName && !lName && payload.name) {
-        const parts = (payload.name as string).split(' ')
-        fName = parts[0]
-        lName = parts.slice(1).join(' ') || ''
+      // Robust Name Handling
+      // 1. Prioritize explicitly provided names (from body)
+      // 2. Fallback to token claims (payload.name)
+      // 3. Fallback to "Anonymous"
+
+      let fName = firstName || ''
+      let lName = lastName || ''
+      let displayName = (payload.name as string) || ''
+
+      // If we don't have a display name from token, try to construct from parts
+      if (!displayName && (fName || lName)) {
+        displayName = `${fName} ${lName}`.trim()
       }
 
-      // Auto-admin for the owner
+      // If we still don't have a display name, fallback to Anonymous
+      if (!displayName) {
+        displayName = 'Anonymous'
+      }
+
+      // Conversely, if we have a display name but no parts (e.g. Google Sign In), split it
+      if ((!fName || !lName) && displayName !== 'Anonymous') {
+        const parts = displayName.split(' ')
+        if (!fName) fName = parts[0]
+        if (!lName) lName = parts.slice(1).join(' ') || ''
+      }
+
+      const isAdmin = payload.email === 'jeffrolson@gmail.com'
 
       try {
         userDoc = await firebase.firestore('PATCH', `users/${uid}`, {
           fields: {
             email: { stringValue: payload.email },
-            name: { stringValue: (payload.name as string) || `${fName} ${lName}`.trim() || 'Anonymous' },
-            firstName: { stringValue: fName || '' },
-            lastName: { stringValue: lName || '' },
+            name: { stringValue: displayName },
+            firstName: { stringValue: fName },
+            lastName: { stringValue: lName },
             credits: { integerValue: 5 }, // Free 5 credits
             role: isAdmin ? { stringValue: 'admin' } : { stringValue: 'user' },
             createdAt: { timestampValue: new Date().toISOString() }
@@ -254,6 +270,39 @@ app.post('/api/auth/verify', async (c) => {
         } catch (ue: any) {
           console.error(`[Verify] Upgrade failed:`, ue.message)
           // Continue anyway, don't block login, but it will fail admin checks later
+        }
+      }
+
+      // Check if user has a broken name ("undefined undefined") and fix it
+      const currentName = userDoc.fields?.name?.stringValue
+      if (currentName === 'undefined undefined' || currentName === 'Anonymous') {
+        console.log(`[Verify] Fixing broken name for user ${uid}: ${currentName}`)
+
+        // Reuse robust name logic (simplified)
+        let fName = firstName || ''
+        let lName = lastName || ''
+        let displayName = (payload.name as string) || ''
+
+        if (!displayName && (fName || lName)) displayName = `${fName} ${lName}`.trim()
+        if (!displayName) displayName = 'Anonymous'
+
+        if ((!fName || !lName) && displayName !== 'Anonymous') {
+          const parts = displayName.split(' ')
+          if (!fName) fName = parts[0]
+          if (!lName) lName = parts.slice(1).join(' ') || ''
+        }
+
+        if (displayName !== 'undefined undefined' && displayName !== 'Anonymous') {
+          try {
+            await firebase.firestore('PATCH', `users/${uid}?updateMask.fieldPaths=name&updateMask.fieldPaths=firstName&updateMask.fieldPaths=lastName`, {
+              fields: {
+                name: { stringValue: displayName },
+                firstName: { stringValue: fName },
+                lastName: { stringValue: lName }
+              }
+            })
+            console.log(`[Verify] Fixed name to: ${displayName}`)
+          } catch (e) { console.error('Name fix failed', e) }
         }
       }
     }

@@ -43,7 +43,10 @@ export function AuthProvider({ children }) {
                     const res = await fetch(`${apiUrl}/api/auth/verify`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token })
+                        body: JSON.stringify({
+                            token,
+                            displayName: firebaseUser.displayName
+                        })
                     });
 
                     if (res.ok) {
@@ -86,7 +89,7 @@ export function AuthProvider({ children }) {
 
         // Immediately sync with backend to ensure names are captured
         try {
-            const token = await userCredential.user.getIdToken();
+            const token = await userCredential.user.getIdToken(true);
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
             await fetch(`${apiUrl}/api/auth/verify`, {
                 method: 'POST',
