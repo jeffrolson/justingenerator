@@ -7,7 +7,7 @@ import { PromptManager } from './admin/PromptManager';
 import { Settings as SettingsComponent } from './admin/Settings';
 
 export function AdminDashboard() {
-    const { user, logout } = useAuth();
+    const { user, backendUser, logout } = useAuth();
     const [activeTab, setActiveTab] = useState('overview');
 
     const menuItems = [
@@ -81,7 +81,7 @@ export function AdminDashboard() {
                     <div className="flex items-center gap-4">
                         <div className="text-right hidden md:block">
                             <div className="text-sm font-medium text-white">{user?.email}</div>
-                            <div className="text-xs text-gray-500 uppercase">{user?.role || 'User'}</div>
+                            <div className="text-xs text-gray-500 uppercase">{backendUser?.role?.stringValue || 'User'}</div>
                         </div>
                         <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-500 to-orange-500"></div>
                     </div>

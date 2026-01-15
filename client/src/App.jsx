@@ -9,7 +9,7 @@ import PricingPage from './pages/PricingPage';
 
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading, backendUser } = useAuth(); // Added backendUser here
   const [remixItem, setRemixItem] = useState(null);
   const path = window.location.pathname;
 
@@ -58,9 +58,26 @@ function AppContent() {
 
 
 
-  // Admin Portal (Auth guarded)
+  // Admin Portal (Auth/Role guarded)
   if (path === '/admin') {
-    return user ? <AdminDashboard /> : <Login />;
+    if (!user) return <Login />;
+    if (loading) return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="w-12 h-12 border-4 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+
+    // Strict check: must have admin role in backendUser
+    if (backendUser?.role?.stringValue === 'admin') {
+      return <AdminDashboard />;
+    }
+
+    // Hide existence for others
+    console.warn("Unauthorized admin access attempt. Redirecting.");
+    window.history.replaceState({}, '', '/');
+    return user ?
+      <Dashboard initialRemix={remixItem} onClearRemix={() => setRemixItem(null)} /> :
+      <ExploreFeed onRemix={(item) => setRemixItem(item)} />;
   }
 
   // Pricing Page (Auth guarded)

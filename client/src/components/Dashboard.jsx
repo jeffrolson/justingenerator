@@ -19,7 +19,8 @@ import {
     MessageCircle,
     Heart,
     Bookmark,
-    Layers
+    Layers,
+    Settings
 } from 'lucide-react';
 
 export function Dashboard({ initialRemix, onClearRemix }) {
@@ -407,6 +408,16 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                             {user?.email}
                         </span>
                     </div>
+                    {backendUser?.role?.stringValue === 'admin' && (
+                        <button
+                            onClick={() => window.location.href = '/admin'}
+                            className="text-violet-400 hover:text-violet-300 transition-colors flex items-center gap-2 text-[10px] md:text-sm font-bold uppercase tracking-wider hover:scale-105"
+                        >
+                            <Settings className="w-4 h-4" />
+                            <span className="hidden xs:inline">Admin Portal</span>
+                            <span className="xs:hidden">Admin</span>
+                        </button>
+                    )}
                     <button
                         onClick={logout}
                         className="text-slate-400 hover:text-white transition-colors flex items-center gap-2 text-[10px] md:text-sm font-medium"
