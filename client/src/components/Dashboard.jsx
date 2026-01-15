@@ -45,8 +45,21 @@ export function Dashboard({ initialRemix, onClearRemix }) {
     const [selectedPresetId, setSelectedPresetId] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTag, setActiveTag] = useState(null);
+    const [features, setFeatures] = useState({ dailyRewards: true, referrals: true });
 
-    // Lock scroll when modal is open
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+
+    // Fetch config
+    useEffect(() => {
+        fetch(`${apiUrl}/api/public/config`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success' && data.features) {
+                    setFeatures(data.features);
+                }
+            })
+            .catch(err => console.error("Failed to load config:", err));
+    }, []);
     useEffect(() => {
         if (showFullSize || sharingItem) {
             document.body.style.overflow = 'hidden';
@@ -56,7 +69,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
         return () => { document.body.style.overflow = 'unset'; };
     }, [showFullSize, sharingItem]);
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+
 
     const fetchPresets = async () => {
         try {
@@ -429,48 +442,54 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                 </div>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8 animate-fade-in-up" style={{ animationDelay: '0.05s' }}>
-                {/* Daily Bonus Card */}
-                <div className="glass-card p-4 flex items-center justify-between border-violet-500/20 bg-violet-500/5 group">
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-violet-600/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <Plus className="w-5 h-5 text-violet-400" />
+            {(features.dailyRewards || features.referrals) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8 animate-fade-in-up" style={{ animationDelay: '0.05s' }}>
+                    {/* Daily Bonus Card */}
+                    {features.dailyRewards && (
+                        <div className="glass-card p-4 flex items-center justify-between border-violet-500/20 bg-violet-500/5 group">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-full bg-violet-600/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <Plus className="w-5 h-5 text-violet-400" />
+                                </div>
+                                <div>
+                                    <h4 className="text-white font-bold text-sm">Daily Reward</h4>
+                                    <p className="text-slate-400 text-xs text-nowrap">Claim your free daily credit</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => alert("Daily credit added! (Mock implementation)")}
+                                className="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all hover:shadow-lg hover:shadow-violet-600/40"
+                            >
+                                Claim Now
+                            </button>
                         </div>
-                        <div>
-                            <h4 className="text-white font-bold text-sm">Daily Reward</h4>
-                            <p className="text-slate-400 text-xs text-nowrap">Claim your free daily credit</p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => alert("Daily credit added! (Mock implementation)")}
-                        className="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all hover:shadow-lg hover:shadow-violet-600/40"
-                    >
-                        Claim Now
-                    </button>
-                </div>
+                    )}
 
-                {/* Invite Card */}
-                <div className="glass-card p-4 flex items-center justify-between border-fuchsia-500/20 bg-fuchsia-500/5 group">
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-fuchsia-600/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <Share2 className="w-5 h-5 text-fuchsia-400" />
+                    {/* Invite Card */}
+                    {features.referrals && (
+                        <div className="glass-card p-4 flex items-center justify-between border-fuchsia-500/20 bg-fuchsia-500/5 group">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-full bg-fuchsia-600/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <Share2 className="w-5 h-5 text-fuchsia-400" />
+                                </div>
+                                <div>
+                                    <h4 className="text-white font-bold text-sm">Invite Friends</h4>
+                                    <p className="text-slate-400 text-xs text-nowrap">Get 5 credits for every referral</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText(`${window.location.origin}/?ref=${user.uid}`);
+                                    alert("Referral link copied to clipboard!");
+                                }}
+                                className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all hover:shadow-lg hover:shadow-fuchsia-600/40"
+                            >
+                                Copy Link
+                            </button>
                         </div>
-                        <div>
-                            <h4 className="text-white font-bold text-sm">Invite Friends</h4>
-                            <p className="text-slate-400 text-xs text-nowrap">Get 5 credits for every referral</p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => {
-                            navigator.clipboard.writeText(`${window.location.origin}/?ref=${user.uid}`);
-                            alert("Referral link copied to clipboard!");
-                        }}
-                        className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all hover:shadow-lg hover:shadow-fuchsia-600/40"
-                    >
-                        Copy Link
-                    </button>
+                    )}
                 </div>
-            </div>
+            )}
 
             <div className="space-y-8 mt-4 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
 

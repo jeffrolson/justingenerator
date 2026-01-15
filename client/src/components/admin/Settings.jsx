@@ -4,7 +4,10 @@ import { Save, RefreshCcw, ShieldCheck, Cpu, MessageCircle } from 'lucide-react'
 
 export function Settings() {
     const { getToken } = useAuth();
-    const [settings, setSettings] = useState({ imageModel: 'gemini-2.5-flash-image' });
+    const [settings, setSettings] = useState({
+        imageModel: 'gemini-2.5-flash-image',
+        featureFlags: { dailyRewards: true, referrals: true }
+    });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
@@ -126,8 +129,63 @@ export function Settings() {
                 </div>
             </div>
 
-            {/* Telegram Settings */}
+            {/* Feature Flags */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-300">
+                        <Layers size={24} />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold text-white">Feature Management</h3>
+                        <p className="text-gray-400 text-sm">Control availability of specific platform features</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Daily Rewards */}
+                    <div className="flex items-center justify-between p-4 rounded-xl bg-black/20 border border-white/5">
+                        <div>
+                            <div className="font-semibold text-white">Daily Rewards</div>
+                            <div className="text-sm text-gray-500">Enable daily credit claiming</div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={settings.featureFlags?.dailyRewards ?? true}
+                                onChange={(e) => setSettings({
+                                    ...settings,
+                                    featureFlags: { ...settings.featureFlags, dailyRewards: e.target.checked }
+                                })}
+                            />
+                            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-emerald-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                        </label>
+                    </div>
+
+                    {/* Referrals */}
+                    <div className="flex items-center justify-between p-4 rounded-xl bg-black/20 border border-white/5">
+                        <div>
+                            <div className="font-semibold text-white">Referral System</div>
+                            <div className="text-sm text-gray-500">Enable invite links & rewards</div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={settings.featureFlags?.referrals ?? true}
+                                onChange={(e) => setSettings({
+                                    ...settings,
+                                    featureFlags: { ...settings.featureFlags, referrals: e.target.checked }
+                                })}
+                            />
+                            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-emerald-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                        </label>
+                    </div>
+                </div>
+            </div >
+
+            {/* Telegram Settings */}
+            < div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm" >
                 <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-blue-500/20 rounded-lg text-blue-300">
                         <MessageCircle size={24} />
@@ -213,7 +271,7 @@ export function Settings() {
                         </button>
                     </div>
                 </div>
-            </div>
+            </div >
 
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-6 flex gap-4">
                 <div className="p-2 bg-amber-500/20 rounded-lg h-fit text-amber-500">
@@ -226,6 +284,6 @@ export function Settings() {
                     </p>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

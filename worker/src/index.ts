@@ -980,7 +980,11 @@ app.get('/api/admin/settings', async (c) => {
       enabled: doc?.fields?.telegram?.mapValue?.fields?.enabled?.booleanValue ?? true,
       events: doc?.fields?.telegram?.mapValue?.fields?.events?.arrayValue?.values?.map((v: any) => v.stringValue) || ['signup']
     }
-    return c.json({ status: 'success', settings: { imageModel: model, telegram } })
+    const featureFlags = {
+      dailyRewards: doc?.fields?.featureFlags?.mapValue?.fields?.dailyRewards?.booleanValue ?? true,
+      referrals: doc?.fields?.featureFlags?.mapValue?.fields?.referrals?.booleanValue ?? true
+    }
+    return c.json({ status: 'success', settings: { imageModel: model, telegram, featureFlags } })
   } catch (e: any) {
     return c.json({ error: e.message }, 500)
   }
@@ -990,7 +994,7 @@ app.get('/api/admin/settings', async (c) => {
 // Update Settings
 app.post('/api/admin/settings', async (c) => {
   const firebase = c.get('firebase')
-  const { imageModel, telegram } = await c.req.json() as { imageModel?: string, telegram?: any }
+  const { imageModel, telegram, featureFlags } = await c.req.json() as { imageModel?: string, telegram?: any, featureFlags?: any }
 
   try {
     const fields: any = {
@@ -1008,6 +1012,16 @@ app.post('/api/admin/settings', async (c) => {
                 values: (telegram.events || []).map((e: string) => ({ stringValue: e }))
               }
             }
+          }
+        }
+      }
+    }
+    if (featureFlags) {
+      fields.featureFlags = {
+        mapValue: {
+          fields: {
+            dailyRewards: { booleanValue: featureFlags.dailyRewards },
+            referrals: { booleanValue: featureFlags.referrals }
           }
         }
       }
@@ -1507,6 +1521,29 @@ app.post('/api/generations/:id/bookmark', async (c) => {
   }
 
   return c.json({ status: 'success', isBookmarked: !isBookmarked })
+})
+
+// Public Config (Feature Flags)
+app.get('/api/public/config', async (c) => {
+  const firebase = c.get('firebase')
+  try {
+    // We cache this heavily in a real app, here we rely on KV or simple reads
+    const doc: any = await firebase.firestore('GET', 'settings/config').catch(() => null)
+
+    // Default features to true if not set
+    const features = {
+      dailyRewards: doc?.fields?.featureFlags?.mapValue?.fields?.dailyRewards?.booleanValue ?? true,
+      referrals: doc?.fields?.featureFlags?.mapValue?.fields?.referrals?.booleanValue ?? true
+    }
+
+    return c.json({ status: 'success', features })
+  } catch (e) {
+    // If fail, default to enabled to not break UI
+    return c.json({
+      status: 'success',
+      features: { dailyRewards: true, referrals: true }
+    })
+  }
 })
 
 // Public image proxy
