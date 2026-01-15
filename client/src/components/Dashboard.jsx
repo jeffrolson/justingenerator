@@ -547,25 +547,27 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                     </button>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                    {presets.map((preset) => (
-                                        <button
-                                            key={preset.id}
-                                            onClick={() => setSelectedPresetId(preset.id)}
-                                            className={`group relative aspect-[4/3] rounded-xl overflow-hidden border-2 transition-all ${selectedPresetId === preset.id ? 'border-violet-500 ring-2 ring-violet-500/50' : 'border-white/5 hover:border-white/20'}`}
-                                        >
-                                            <img src={getImageUrl(preset.sampleUrl, apiUrl)} alt={preset.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                            <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity ${selectedPresetId === preset.id ? 'opacity-100' : 'opacity-60 group-hover:opacity-80'}`}></div>
-                                            <div className="absolute inset-0 flex flex-col justify-end p-3">
-                                                <p className="text-[10px] font-bold text-white uppercase tracking-wider">{preset.title}</p>
-                                                {selectedPresetId === preset.id && (
-                                                    <div className="absolute top-2 right-2 bg-violet-600 rounded-full p-1 shadow-lg">
-                                                        <Check className="w-3 h-3 text-white" />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </button>
-                                    ))}
+                                <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                        {presets.map((preset) => (
+                                            <button
+                                                key={preset.id}
+                                                onClick={() => setSelectedPresetId(preset.id)}
+                                                className={`group relative aspect-[4/3] rounded-xl overflow-hidden border-2 transition-all ${selectedPresetId === preset.id ? 'border-violet-500 ring-2 ring-violet-500/50' : 'border-white/5 hover:border-white/20'}`}
+                                            >
+                                                <img src={getImageUrl(preset.sampleUrl, apiUrl)} alt={preset.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                                <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity ${selectedPresetId === preset.id ? 'opacity-100' : 'opacity-60 group-hover:opacity-80'}`}></div>
+                                                <div className="absolute inset-0 flex flex-col justify-end p-3">
+                                                    <p className="text-[10px] font-bold text-white uppercase tracking-wider">{preset.title}</p>
+                                                    {selectedPresetId === preset.id && (
+                                                        <div className="absolute top-2 right-2 bg-violet-600 rounded-full p-1 shadow-lg">
+                                                            <Check className="w-3 h-3 text-white" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
                         </div>
