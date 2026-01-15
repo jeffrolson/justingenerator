@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area } from 'recharts';
-import { TrendingUp, Users, DollarSign, Activity, AlertCircle, Zap, Wallet, Calendar } from 'lucide-react';
+import { TrendingUp, Users, DollarSign, Activity, AlertCircle, Zap, Wallet, Calendar, ExternalLink, Cloud, Globe } from 'lucide-react';
 
 const KPICard = ({ title, value, trend, icon: Icon, color, label }) => (
     <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm hover:bg-white/10 transition-colors">
@@ -69,6 +69,48 @@ export function Overview() {
                         </button>
                     ))}
                 </div>
+            </div>
+
+            {/* External Tools */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <a href="https://analytics.google.com/" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all hover:border-orange-500/30">
+                    <div className="p-3 bg-orange-500/20 rounded-lg text-orange-500 group-hover:scale-110 transition-transform">
+                        <TrendingUp size={24} />
+                    </div>
+                    <div>
+                        <div className="font-bold text-white flex items-center gap-2">
+                            Google Analytics
+                            <ExternalLink size={14} className="text-gray-500" />
+                        </div>
+                        <div className="text-sm text-gray-400">Traffic & User Behavior</div>
+                    </div>
+                </a>
+
+                <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all hover:border-blue-500/30">
+                    <div className="p-3 bg-blue-500/20 rounded-lg text-blue-500 group-hover:scale-110 transition-transform">
+                        <Cloud size={24} />
+                    </div>
+                    <div>
+                        <div className="font-bold text-white flex items-center gap-2">
+                            Google Cloud
+                            <ExternalLink size={14} className="text-gray-500" />
+                        </div>
+                        <div className="text-sm text-gray-400">Infrastructure & Logs</div>
+                    </div>
+                </a>
+
+                <a href="https://dash.cloudflare.com/" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all hover:border-orange-500/30">
+                    <div className="p-3 bg-orange-500/20 rounded-lg text-orange-500 group-hover:scale-110 transition-transform">
+                        <Globe size={24} />
+                    </div>
+                    <div>
+                        <div className="font-bold text-white flex items-center gap-2">
+                            Cloudflare
+                            <ExternalLink size={14} className="text-gray-500" />
+                        </div>
+                        <div className="text-sm text-gray-400">CDN & Edge Workers</div>
+                    </div>
+                </a>
             </div>
 
             {/* KPI Grid */}
