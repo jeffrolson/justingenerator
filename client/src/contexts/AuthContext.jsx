@@ -76,7 +76,8 @@ export function AuthProvider({ children }) {
         backendUser,
         loading,
         login,
-        logout
+        logout,
+        getToken: async () => user ? user.getIdToken() : null
     };
 
     return (
