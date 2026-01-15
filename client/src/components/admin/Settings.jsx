@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Save, RefreshCcw, ShieldCheck, Cpu, MessageCircle } from 'lucide-react';
+import { Save, RefreshCcw, ShieldCheck, Cpu, MessageCircle, Layers } from 'lucide-react';
 
 export function Settings() {
     const { getToken } = useAuth();

@@ -46,6 +46,18 @@ export function Dashboard({ initialRemix, onClearRemix }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTag, setActiveTag] = useState(null);
     const [features, setFeatures] = useState({ dailyRewards: true, referrals: true });
+    const [previewUrl, setPreviewUrl] = useState(null);
+
+    // Handle File Preview
+    useEffect(() => {
+        if (!file) {
+            setPreviewUrl(null);
+            return;
+        }
+        const objectUrl = URL.createObjectURL(file);
+        setPreviewUrl(objectUrl);
+        return () => URL.revokeObjectURL(objectUrl);
+    }, [file]);
 
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
@@ -504,9 +516,12 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                         </div>
 
                         <div className="space-y-4">
-                            <label className="text-sm font-medium text-violet-200 ml-1">
-                                {remixSource ? 'Remixing Style' : 'Choose a Style'}
-                            </label>
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-medium text-violet-200 flex items-center gap-2">
+                                    {remixSource ? 'Remixing Style' : 'Choose a Style'}
+                                    {(selectedPresetId || remixSource) && <Check className="w-4 h-4 text-emerald-400 animate-fade-in" />}
+                                </label>
+                            </div>
 
                             {remixSource ? (
                                 <div className="p-4 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex gap-4 items-center animate-fade-in-up">
@@ -555,27 +570,44 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                             )}
                         </div>
 
-                        <div
-                            className={`border-2 border-dashed border-white/10 rounded-2xl p-8 text-center transition-all duration-300 relative overflow-hidden ${file ? 'bg-violet-500/10 border-violet-500/30' : 'hover:bg-white/5 hover:border-violet-500/30'} cursor-pointer`}
-                        >
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => setFile(e.target.files[0])}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                            />
-                            <div className="space-y-4 pointer-events-none relative z-0 flex flex-col items-center justify-center">
-                                <div className={`p-4 rounded-full bg-white/5 transition-transform duration-300 ${!file && 'group-hover:scale-110'}`}>
-                                    {file ? <ImageIcon className="w-8 h-8 text-violet-300" /> : <Upload className="w-8 h-8 text-slate-400" />}
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-white font-medium text-lg">
-                                        {file ? file.name : "Upload Photo"}
-                                    </p>
-                                    <p className="text-slate-400 text-sm">
-                                        {file ? "Click to change" : "Drag & drop or click to browse"}
-                                    </p>
-                                </div>
+                        <div className="space-y-4">
+                            <label className="text-sm font-medium text-violet-200 flex items-center gap-2">
+                                Upload Your Photo
+                                {file && <Check className="w-4 h-4 text-emerald-400 animate-fade-in" />}
+                            </label>
+
+                            <div
+                                className={`border-2 border-dashed border-white/10 rounded-2xl p-8 text-center transition-all duration-300 relative overflow-hidden ${file ? 'bg-violet-500/10 border-violet-500/30' : 'hover:bg-white/5 hover:border-violet-500/30'} cursor-pointer h-[200px] flex items-center justify-center`}
+                            >
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => setFile(e.target.files[0])}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                />
+                                {previewUrl ? (
+                                    <div className="absolute inset-0 w-full h-full animate-fade-in">
+                                        <div className="absolute inset-0 bg-black/50 z-0 text-white flex flex-col items-center justify-center opacity-0 hover:opacity-100 transition-opacity backdrop-blur-sm">
+                                            <ImageIcon className="w-8 h-8 mb-2" />
+                                            <p className="font-bold">Click to Change</p>
+                                        </div>
+                                        <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4 pointer-events-none relative z-0 flex flex-col items-center justify-center">
+                                        <div className={`p-4 rounded-full bg-white/5 transition-transform duration-300 ${!file && 'group-hover:scale-110'}`}>
+                                            {file ? <ImageIcon className="w-8 h-8 text-violet-300" /> : <Upload className="w-8 h-8 text-slate-400" />}
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-white font-medium text-lg">
+                                                Upload Photo
+                                            </p>
+                                            <p className="text-slate-400 text-sm">
+                                                Drag & drop or click to browse
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
