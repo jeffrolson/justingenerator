@@ -605,7 +605,8 @@ app.get('/api/presets', async (c) => {
       prompt: doc.prompt?.stringValue,
       tags: doc.tags?.arrayValue?.values?.map((v: any) => v.stringValue) || [],
       sampleUrl: doc.imageUrl?.stringValue ?
-        (doc.imageUrl.stringValue.startsWith('http') ? doc.imageUrl.stringValue : `/api/image/${encodeURIComponent(doc.imageUrl.stringValue)}`)
+        ((doc.imageUrl.stringValue.startsWith('http') || doc.imageUrl.stringValue.startsWith('/examples/')) ?
+          doc.imageUrl.stringValue : `/api/image/${encodeURIComponent(doc.imageUrl.stringValue)}`)
         : '/placeholder.png'
     }))
   } catch (e) {
@@ -983,6 +984,7 @@ app.get('/api/jobs/active', async (c) => {
   try {
     // Query only by userId and orderBy createdAt to get the latest job.
     // We omit the 'status' filter to avoid requiring a composite index.
+    // Query only by userId. We omit the 'orderBy' to avoid requiring a composite index.
     const results = await firebase.query('jobs', {
       where: {
         fieldFilter: {
@@ -991,12 +993,16 @@ app.get('/api/jobs/active', async (c) => {
           value: { stringValue: user.sub }
         }
       },
-      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
-      limit: 5 // Get a few recent ones to find an active one
+      limit: 10 // Get a few recent ones
     })
 
-    const activeJob = results.find((j: any) => j.status?.stringValue === 'processing') ||
-      results.find((j: any) => j.status?.stringValue === 'completed' &&
+    // Sort in-memory to find the most recent processing or recently completed job
+    const sortedJobs = results.sort((a: any, b: any) =>
+      new Date(b.createdAt?.timestampValue || 0).getTime() - new Date(a.createdAt?.timestampValue || 0).getTime()
+    );
+
+    const activeJob = sortedJobs.find((j: any) => j.status?.stringValue === 'processing') ||
+      sortedJobs.find((j: any) => j.status?.stringValue === 'completed' &&
         (new Date().getTime() - new Date(j.createdAt?.timestampValue).getTime() < 30000));
 
     if (activeJob) {
