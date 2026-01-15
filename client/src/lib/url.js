@@ -11,6 +11,11 @@ export const getImageUrl = (path, apiUrl) => {
         return path.replace('http//', 'http://').replace('https//', 'https://');
     }
 
+    // If it's an example image, it's served from the public folder (skips R2/API proxy)
+    if (path.startsWith('/examples/')) {
+        return path;
+    }
+
     // Ensure apiUrl doesn't have a trailing slash
     const base = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
 

@@ -1303,10 +1303,9 @@ app.get('/api/image/:path', async (c) => {
 app.post('/api/stripe/checkout', async (c) => {
   const stripe = getStripe(c.env)
   const user = c.get('user')
-  const { priceId } = await c.req.json() as { priceId: string }
+  const { priceId, originalPath, presetId } = await c.req.json() as { priceId: string, originalPath?: string, presetId?: string }
 
-  // Determine mode based on Price ID (Hardcoded for simplicity or check recurring)
-  // Pro Sub Price ID: price_1Spj39FYNUGeLOIpFYcccsqI
+  // Determine mode based on Price ID
   const isSubscription = priceId === 'price_1Spj39FYNUGeLOIpFYcccsqI';
   const mode = isSubscription ? 'subscription' : 'payment';
 
@@ -1315,11 +1314,13 @@ app.post('/api/stripe/checkout', async (c) => {
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: mode,
-      success_url: `${c.req.header('origin')}/?checkout=success`, // Redirect to dashboard
+      success_url: `${c.req.header('origin')}/?checkout=success`,
       cancel_url: `${c.req.header('origin')}/pricing?checkout=cancel`,
       metadata: {
         userId: user.sub,
-        type: mode === 'subscription' ? 'pro_sub' : 'credit_pack'
+        type: mode === 'subscription' ? 'pro_sub' : 'credit_pack',
+        originalPath: originalPath || '',
+        presetId: presetId || ''
       }
     })
     return c.json({ url: session.url })
@@ -1345,6 +1346,8 @@ app.post('/api/stripe/webhook', async (c) => {
       const session = event.data.object as any
       const userId = session.metadata?.userId
       const type = session.metadata?.type // 'credit_pack' | 'pro_sub'
+      const originalPath = session.metadata?.originalPath
+      const presetId = session.metadata?.presetId
 
       if (userId) {
         if (type === 'credit_pack') {
@@ -1359,6 +1362,43 @@ app.post('/api/stripe/webhook', async (c) => {
               totalSpent: { doubleValue: currentSpent + (session.amount_total / 100) }
             }
           })
+
+          // Trigger Batch Processing if an image was pre-uploaded
+          if (originalPath) {
+            const jobId = crypto.randomUUID()
+            let basePrompt = 'A stylish portrait'
+            if (presetId) {
+              const preset = PRESETS.find(p => p.id === presetId)
+              if (preset) {
+                basePrompt = preset.prompt
+              } else {
+                // Check stored prompts
+                try {
+                  const stored: any = await firebase.firestore('GET', `stored_prompts/${presetId}`)
+                  if (stored && stored.fields) {
+                    basePrompt = stored.fields.prompt?.stringValue || basePrompt
+                  }
+                } catch (e) {
+                  console.warn(`Webhook: Preset ${presetId} not found`)
+                }
+              }
+            }
+
+            // Create Job Document
+            await firebase.firestore('PATCH', `jobs/${jobId}`, {
+              fields: {
+                userId: { stringValue: userId },
+                status: { stringValue: 'processing' },
+                total_images: { integerValue: 10 },
+                completed_images: { integerValue: 0 },
+                createdAt: { timestampValue: new Date().toISOString() },
+                originalPath: { stringValue: originalPath }
+              }
+            })
+
+            // Start Async Process
+            c.executionCtx.waitUntil(processBatch(c.env, firebase, jobId, userId, originalPath, basePrompt))
+          }
         } else if (type === 'pro_sub') {
           // Activate Subscription
           await firebase.firestore('PATCH', `users/${userId}`, {
@@ -1370,7 +1410,7 @@ app.post('/api/stripe/webhook', async (c) => {
           })
         }
 
-        c.executionCtx.waitUntil(analytics.logEvent('payment_success', userId, { amount: session.amount_total, type }))
+        c.executionCtx.waitUntil(analytics.logEvent('payment_success', userId, { amount: session.amount_total, type, batchTriggered: !!originalPath }))
       }
     }
 

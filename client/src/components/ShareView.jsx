@@ -120,9 +120,6 @@ export function ShareView({ genId }) {
                     <div className="p-8 md:p-10 space-y-6">
                         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                             <div className="space-y-2">
-                                <span className="inline-block px-3 py-1 bg-violet-500/10 text-violet-400 text-[10px] font-bold tracking-widest uppercase rounded-full border border-violet-500/20 mb-2">
-                                    AI Masterpiece
-                                </span>
                                 <h2 className="text-3xl md:text-4xl font-black text-white leading-tight">
                                     {data.summary}
                                 </h2>

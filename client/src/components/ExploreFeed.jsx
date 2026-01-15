@@ -148,12 +148,6 @@ export function ExploreFeed({ onRemix }) {
                             </button>
                         </div>
 
-                        {/* Content Bottom (Always visible or semi-visible) */}
-                        <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-none">
-                            <div className="px-3 py-1 rounded-lg bg-black/40 backdrop-blur-md border border-white/10 text-[10px] uppercase tracking-wider font-bold text-white/80">
-                                AI Masterpiece
-                            </div>
-                        </div>
                     </div>
                 ))}
             </div>

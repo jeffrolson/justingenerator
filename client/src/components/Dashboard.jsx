@@ -439,7 +439,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                         onClick={() => setSelectedPresetId(preset.id)}
                                         className={`group relative aspect-[4/3] rounded-xl overflow-hidden border-2 transition-all ${selectedPresetId === preset.id ? 'border-violet-500 ring-2 ring-violet-500/50' : 'border-white/5 hover:border-white/20'}`}
                                     >
-                                        <img src={preset.sampleUrl} alt={preset.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                        <img src={getImageUrl(preset.sampleUrl, apiUrl)} alt={preset.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                                         <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity ${selectedPresetId === preset.id ? 'opacity-100' : 'opacity-60 group-hover:opacity-80'}`}></div>
                                         <div className="absolute inset-0 flex flex-col justify-end p-3">
                                             <p className="text-[10px] font-bold text-white uppercase tracking-wider">{preset.title}</p>
@@ -666,7 +666,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                 <div
                                     className="relative aspect-[3/4] glass-card p-1 cursor-pointer overflow-hidden rounded-2xl border-white/5 hover:border-violet-500/30 transition-all duration-500 shadow-lg group-hover:shadow-violet-500/10"
                                     onClick={() => {
-                                        setPreviewImage(`${apiUrl}${item.imageUrl}`);
+                                        setPreviewImage(getImageUrl(item.imageUrl, apiUrl));
                                         setShowFullSize(true);
                                     }}
                                 >
