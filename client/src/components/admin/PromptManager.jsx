@@ -237,7 +237,7 @@ export function PromptManager() {
                     <h2 className="text-2xl font-bold">Prompt Management</h2>
                     <p className="text-gray-400 text-sm mt-1">Manage generation presets and view usage stats</p>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3 relative z-10">
                     <label className="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg cursor-pointer transition-colors border border-white/10">
                         <Upload size={18} className="text-violet-400" />
                         <span className="text-sm font-medium">Import CSV</span>

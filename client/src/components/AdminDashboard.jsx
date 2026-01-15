@@ -6,7 +6,7 @@ import { UserManager } from './admin/UserManager';
 import { PromptManager } from './admin/PromptManager';
 
 export function AdminDashboard() {
-    const { user, signOut } = useAuth();
+    const { user, logout } = useAuth();
     const [activeTab, setActiveTab] = useState('overview');
 
     const menuItems = [
@@ -28,7 +28,7 @@ export function AdminDashboard() {
     return (
         <div className="min-h-screen bg-[#0a0a0a] flex">
             {/* Sidebar */}
-            <aside className="w-64 border-r border-white/10 bg-black/50 backdrop-blur-xl flex flex-col fixed h-full z-10 transition-transform">
+            <aside className="w-64 border-r border-white/10 bg-black/50 backdrop-blur-xl flex flex-col fixed h-full z-20 transition-transform">
                 <div className="p-6 border-b border-white/10">
                     <div className="flex items-center gap-3 mb-1">
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center font-bold text-white">
@@ -63,7 +63,7 @@ export function AdminDashboard() {
                         <span className="font-medium">Back to App</span>
                     </button>
                     <button
-                        onClick={signOut}
+                        onClick={logout}
                         className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors"
                     >
                         <LogOut size={20} />
