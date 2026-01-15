@@ -27,7 +27,7 @@ const PRESETS = [
     description: 'Neon-drenched futuristic style',
     prompt: 'A futuristic cyberpunk portrait, neon lights, high tech, highly detailed, cinematic lighting',
     tags: ['cyberpunk', 'futuristic', 'neon', 'sci-fi'],
-    sampleUrl: 'https://images.unsplash.com/photo-1614728263952-84ea256f9679?auto=format&fit=crop&w=800&q=80'
+    sampleUrl: '/examples/cyberpunk.png'
   },
   {
     id: 'vintage-90s',
@@ -35,7 +35,7 @@ const PRESETS = [
     description: 'Nostalgic disposable camera look',
     prompt: 'A vintage 90s disposable camera photo, heavy flash, grainy texture, nostalgic atmosphere, suburban setting',
     tags: ['vintage', '90s', 'retro', 'film'],
-    sampleUrl: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=800&q=80'
+    sampleUrl: '/examples/vintage.png'
   },
   {
     id: 'oil-painting',
@@ -43,7 +43,7 @@ const PRESETS = [
     description: 'Classical masterpiece aesthetic',
     prompt: 'A classical oil painting portrait, visible brushstrokes, textured canvas, dramatic chiaroscuro lighting, museum quality',
     tags: ['art', 'painting', 'classical', 'oil'],
-    sampleUrl: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&w=800&q=80'
+    sampleUrl: '/examples/painting.png'
   },
   {
     id: 'anime',

@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
                 // Sync with backend
                 try {
                     const token = await firebaseUser.getIdToken();
-                    const apiUrl = 'https://worker.jeffrolson1.workers.dev';
+                    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
                     console.log("Syncing with backend at:", apiUrl);
                     const res = await fetch(`${apiUrl}/api/auth/verify`, {
                         method: 'POST',

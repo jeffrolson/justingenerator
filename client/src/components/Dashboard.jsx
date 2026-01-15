@@ -48,7 +48,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
 
     const fetchPresets = async () => {
         try {
-            const res = await fetch(`${apiUrl} /api/presets`);
+            const res = await fetch(`${apiUrl}/api/presets`);
             if (res.ok) {
                 const data = await res.json();
                 setPresets(data.presets || []);
@@ -64,10 +64,10 @@ export function Dashboard({ initialRemix, onClearRemix }) {
         setLoadingHistory(true);
         try {
             const token = await user.getIdToken();
-            let url = `${apiUrl} /api/generations ? filter = ${filter} `;
-            if (tag) url += `& tag=${encodeURIComponent(tag)} `;
+            let url = `${apiUrl}/api/generations?filter=${filter}`;
+            if (tag) url += `&tag=${encodeURIComponent(tag)}`;
             const res = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${token} ` }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
                 const data = await res.json();
@@ -117,10 +117,10 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                 formData.append('remixFrom', remixSource.id);
             }
 
-            const res = await fetch(`${apiUrl} /api/generate`, {
+            const res = await fetch(`${apiUrl}/api/generate`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token} `
+                    'Authorization': `Bearer ${token}`
                 },
                 body: formData
             });
@@ -177,8 +177,8 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                 // We'll add an endpoint to get active jobs or just use query
                 // For simplicity, let's assume we can fetch history and see the latest job status
                 // Or we can add a simple /api/jobs/active endpoint
-                const res = await fetch(`${apiUrl} /api/jobs / active`, {
-                    headers: { 'Authorization': `Bearer ${token} ` }
+                const res = await fetch(`${apiUrl}/api/jobs/active`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.ok) {
                     const data = await res.json();
@@ -213,9 +213,9 @@ export function Dashboard({ initialRemix, onClearRemix }) {
             }
 
             // 1. Pre-upload image so we have a path for the webhook
-            const uploadRes = await fetch(`${apiUrl} /api/upload - only`, {
+            const uploadRes = await fetch(`${apiUrl}/api/upload-only`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token} ` },
+                headers: { 'Authorization': `Bearer ${token}` },
                 body: formData
             });
 
@@ -223,10 +223,10 @@ export function Dashboard({ initialRemix, onClearRemix }) {
             const { path } = await uploadRes.json();
 
             // 2. Start Checkout
-            const stripeRes = await fetch(`${apiUrl} /api/stripe / checkout`, {
+            const stripeRes = await fetch(`${apiUrl}/api/stripe/checkout`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token} `,
+                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
@@ -250,7 +250,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
     const handleVote = async (id, type) => {
         try {
             const token = await user.getIdToken();
-            const res = await fetch(`${apiUrl} /api/generations / ${id}/vote`, {
+            const res = await fetch(`${apiUrl}/api/generations/${id}/vote`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
