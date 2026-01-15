@@ -137,6 +137,11 @@ app.post('/api/events', async (c) => {
   return c.json({ status: 'ok' })
 })
 
+
+
+// TEMP: Migration Endpoint to seed database
+
+
 // Auth: Verify token and sync user to Firestore
 app.post('/api/auth/verify', async (c) => {
   let body: any = {}
