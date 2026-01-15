@@ -506,22 +506,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                         </span>
                     </button>
 
-                    <div className="flex items-center gap-4 py-2">
-                        <div className="h-px bg-white/10 flex-grow"></div>
-                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">or</span>
-                        <div className="h-px bg-white/10 flex-grow"></div>
-                    </div>
 
-                    <button
-                        onClick={handleBuyCredits}
-                        disabled={generating || !file}
-                        className="w-full py-4 rounded-xl border border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/20 text-violet-200 font-bold transition-all flex items-center justify-center gap-2 group overflow-hidden relative"
-                    >
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-shimmer p-1"></div>
-                        <Sparkles className="w-5 h-5" />
-                        Generate Pro Batch (10 Images)
-                    </button>
-                    <p className="text-center text-[10px] text-slate-500 font-medium">✨ Pro Batch uses advanced styles and saves to your collection</p>
                 </section>
 
                 {/* Result Section/Active Job Section */}
