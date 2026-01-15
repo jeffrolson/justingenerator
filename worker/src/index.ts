@@ -402,9 +402,144 @@ app.post('/api/generate', async (c) => {
   })
 })
 
-// Presets: Get all available styles
+// Presets: Get all available styles (Hardcoded + Stored)
 app.get('/api/presets', async (c) => {
-  return c.json({ status: 'success', presets: PRESETS.map(p => ({ id: p.id, title: p.title, description: p.description, sampleUrl: p.sampleUrl, tags: p.tags })) })
+  const firebase = c.get('firebase')
+
+  // Fetch stored prompts from Firestore
+  let storedPrompts: any[] = []
+  try {
+    const query = {
+      from: [{ collectionId: 'stored_prompts' }],
+      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }]
+    }
+    const results = await firebase.query('stored_prompts', query)
+
+    storedPrompts = results.map((doc: any) => ({
+      id: doc.id,
+      title: doc.name?.stringValue || 'Untitled',
+      description: 'Custom Preset', // or add description field
+      prompt: doc.prompt?.stringValue,
+      tags: doc.tags?.arrayValue?.values?.map((v: any) => v.stringValue) || [],
+      sampleUrl: doc.imageUrl?.stringValue ?
+        (doc.imageUrl.stringValue.startsWith('http') ? doc.imageUrl.stringValue : `/api/image/${encodeURIComponent(doc.imageUrl.stringValue)}`)
+        : '/placeholder.png'
+    }))
+  } catch (e) {
+    console.warn('Failed to fetch stored prompts', e)
+    // Fallback to just hardcoded
+  }
+
+  return c.json({
+    status: 'success',
+    presets: [
+      ...storedPrompts,
+      ...PRESETS.map(p => ({
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        sampleUrl: p.sampleUrl,
+        tags: p.tags
+      }))
+    ]
+  })
+})
+
+// --- Admin Endpoints ---
+
+// List all stored prompts
+app.get('/api/admin/prompts', async (c) => {
+  const firebase = c.get('firebase')
+  try {
+    const results = await firebase.query('stored_prompts', {
+      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }]
+    })
+
+    return c.json({
+      status: 'success',
+      prompts: results.map((doc: any) => ({
+        id: doc.id,
+        name: doc.name?.stringValue,
+        prompt: doc.prompt?.stringValue,
+        tags: doc.tags?.arrayValue?.values?.map((v: any) => v.stringValue) || [],
+        imageUrl: doc.imageUrl?.stringValue,
+        createdAt: doc.createdAt?.timestampValue
+      }))
+    })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+})
+
+// Create new stored prompt
+app.post('/api/admin/prompts', async (c) => {
+  const user = c.get('user')
+  const firebase = c.get('firebase')
+
+  // Basic Admin Check (Allow all authenticated users for now, or check for specific email)
+  // if (user.email !== 'admin@example.com') return c.json({ error: 'Unauthorized' }, 403)
+
+  let body;
+  try {
+    body = await c.req.parseBody()
+  } catch (e) {
+    return c.json({ error: 'Invalid form data' }, 400)
+  }
+
+  const name = body['name'] as string
+  const prompt = body['prompt'] as string
+  const tagsStr = body['tags'] as string
+  const file = body['image'] as File
+
+  if (!name || !prompt || !file) {
+    return c.json({ error: 'Missing required fields' }, 400)
+  }
+
+  const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(Boolean) : []
+  const fileExt = file.name.split('.').pop() || 'jpg'
+  const promptId = crypto.randomUUID()
+  const imagePath = `prompts/${promptId}.${fileExt}`
+
+  // Upload Reference Image
+  await c.env.BUCKET.put(imagePath, await file.arrayBuffer(), {
+    customMetadata: { type: 'prompt-reference' }
+  })
+
+  // Create Firestore Doc
+  await firebase.firestore('PATCH', `stored_prompts/${promptId}`, {
+    fields: {
+      name: { stringValue: name },
+      prompt: { stringValue: prompt },
+      tags: { arrayValue: { values: tags.map(t => ({ stringValue: t })) } },
+      imageUrl: { stringValue: imagePath },
+      createdAt: { timestampValue: new Date().toISOString() },
+      createdBy: { stringValue: user.sub }
+    }
+  })
+
+  return c.json({ status: 'success', id: promptId })
+})
+
+// Delete stored prompt
+app.delete('/api/admin/prompts/:id', async (c) => {
+  const id = c.req.param('id')
+  const firebase = c.get('firebase')
+
+  // 1. Get doc to find image path
+  const doc: any = await firebase.firestore('GET', `stored_prompts/${id}`).catch(() => null)
+  if (!doc) return c.json({ error: 'Not found' }, 404)
+
+  const imagePath = doc.fields?.imageUrl?.stringValue
+
+  // 2. Delete from Firestore
+  await firebase.firestore('DELETE', `stored_prompts/${id}`)
+
+  // 3. Delete from R2 (Optional, but good cleanup)
+  if (imagePath && !imagePath.startsWith('http')) {
+    await c.env.BUCKET.delete(imagePath)
+  }
+
+  return c.json({ status: 'success', deleted: id })
 })
 
 // Upload-only: Pre-upload for batch jobs
@@ -487,23 +622,21 @@ app.get('/api/generations', async (c) => {
   try {
     let structuredQuery: any = {
       from: [{ collectionId: 'generations' }],
-      orderBy: [{
-        field: { fieldPath: 'createdAt' },
-        direction: 'DESCENDING'
-      }],
-      limit: 50
+      // Remove orderBy to avoid index requirement
+      // limit: 50 // We'll limit after filtering
     }
 
     const filters: any[] = []
 
     if (filter === 'my') {
       filters.push({ fieldFilter: { field: { fieldPath: 'userId' }, op: 'EQUAL', value: { stringValue: user.sub } } })
-      filters.push({ fieldFilter: { field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'completed' } } })
+      // Remove status filter here, do it in memory
     }
 
-    if (tag) {
-      filters.push({ fieldFilter: { field: { fieldPath: 'tags' }, op: 'ARRAY_CONTAINS', value: { stringValue: tag.toLowerCase() } } })
-    }
+    // Tag filter can be kept if it doesn't require composite index with userId, 
+    // but to be safe and consistent, let's do it in memory if we are already doing in-memory sort
+    // However, fetching ALL user generations to filter for one tag might be expensive eventually.
+    // For now, let's keep it simple and safe.
 
     if (filters.length > 0) {
       if (filters.length === 1) {
@@ -518,7 +651,9 @@ app.get('/api/generations', async (c) => {
       }
     }
 
+    // For likes/bookmarks, we fetch by ID, so query is different
     if (filter === 'likes' || filter === 'bookmarks') {
+      // ... (existing logic for fetching IDs) ...
       // 1. Fetch the IDs from the interaction subcollection
       const interactionPath = `users/${user.sub}/${filter}`
       const interactions: any = await firebase.firestore('GET', interactionPath)
@@ -529,11 +664,7 @@ app.get('/api/generations', async (c) => {
 
       const ids = interactions.documents.map((d: any) => d.name.split('/').pop())
 
-      // 2. Fetch the generations for these IDs
-      // Note: IN query has a limit of 10 items in standard Firestore, but REST API might be different. 
-      // However, we already have a potential composite filter if tag is present.
-      // Firestore doesn't support IN and ARRAY_CONTAINS in the same query easily without indexes.
-      // For simplicity, let's keep it as is or handle tag filtering in memory for likes/bookmarks if needed.
+      // Use ID filter
       const idFilter = {
         fieldFilter: {
           field: { fieldPath: '__name__' },
@@ -545,23 +676,32 @@ app.get('/api/generations', async (c) => {
           }
         }
       }
-
-      if (tag) {
-        structuredQuery.where = {
-          compositeFilter: {
-            op: 'AND',
-            filters: [
-              idFilter,
-              { fieldFilter: { field: { fieldPath: 'tags' }, op: 'ARRAY_CONTAINS', value: { stringValue: tag.toLowerCase() } } }
-            ]
-          }
-        }
-      } else {
-        structuredQuery.where = idFilter
-      }
+      structuredQuery.where = idFilter
     }
 
-    const results = await firebase.query('generations', structuredQuery)
+    let results = await firebase.query('generations', structuredQuery)
+
+    // In-memory Filter & Sort
+    if (filter === 'my') {
+      results = results.filter((g: any) => g.status?.stringValue === 'completed');
+    }
+
+    if (tag) {
+      const lowerTag = tag.toLowerCase();
+      results = results.filter((g: any) =>
+        g.tags?.arrayValue?.values?.some((v: any) => v.stringValue === lowerTag)
+      );
+    }
+
+    // Sort by createdAt desc
+    results.sort((a: any, b: any) => {
+      const dateA = new Date(a.createdAt?.timestampValue || 0).getTime();
+      const dateB = new Date(b.createdAt?.timestampValue || 0).getTime();
+      return dateB - dateA;
+    });
+
+    // Apply limit
+    results = results.slice(0, 50);
 
     return c.json({
       status: 'success',
@@ -651,6 +791,7 @@ app.get('/api/public/feed', async (c) => {
   const firebase = new Firebase(c.env)
 
   // Fetch latest public generations
+  // Fetch latest public generations
   const structuredQuery = {
     where: {
       fieldFilter: {
@@ -659,17 +800,23 @@ app.get('/api/public/feed', async (c) => {
         value: { booleanValue: true }
       }
     },
-    orderBy: [{
-      field: { fieldPath: 'createdAt' },
-      direction: 'DESCENDING'
-    }],
-    limit: 50
+    // Remove orderBy to avoid index requirement
+    // limit: 50 // We'll limit after sorting
   }
 
   let feed: any[] = []
   try {
-    const results: any = await firebase.query('generations', structuredQuery)
+    let results: any = await firebase.query('generations', structuredQuery)
     if (results && Array.isArray(results)) {
+      // Sort in memory
+      results.sort((a: any, b: any) => {
+        const dateA = new Date(a.createdAt?.timestampValue || 0).getTime();
+        const dateB = new Date(b.createdAt?.timestampValue || 0).getTime();
+        return dateB - dateA;
+      });
+
+      results = results.slice(0, 50);
+
       feed = results.map((g: any) => ({
         id: g.id,
         summary: g.summary?.stringValue || g.prompt?.stringValue?.substring(0, 30),
@@ -682,7 +829,7 @@ app.get('/api/public/feed', async (c) => {
       }))
     }
   } catch (e: any) {
-    console.warn('Firestore feed query failed (likely missing index). Proceeding with seed data only.', e.message)
+    console.warn('Firestore feed query failed. Proceeding with seed data only.', e.message)
   }
 
   // Add seed data from PRESETS
