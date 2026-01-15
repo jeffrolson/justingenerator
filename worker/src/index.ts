@@ -441,6 +441,23 @@ app.post('/api/generate', async (c) => {
     }
   })
 
+  // Increment Generations Count (Optimistic)
+  try {
+    // Re-fetch to get current count if needed, or just increment blindly if supported. 
+    // Firestore REST API doesn't support atomic increment easily without a transaction or transform.
+    // Using transform with updateMask for credits was shown above, let's try similar for generationsCount.
+    // However, we just decremented credits. Let's try to update generationsCount.
+    // Since we don't know the previous value for sure without reading, and we read credits earlier.
+    // We'll read user again? No, let's just do a blind PATCH assuming we have a base, or ignore race conditions for this stat.
+    // BETTER: We already read 'userDoc' at step 1.
+    const currentGens = parseInt(userDoc.fields?.generationsCount?.integerValue || '0')
+    await firebase.firestore('PATCH', `users/${user.sub}?updateMask.fieldPaths=generationsCount`, {
+      fields: { generationsCount: { integerValue: currentGens + 1 } }
+    })
+  } catch (e) {
+    console.warn("Failed to increment generations count", e)
+  }
+
   // Log success
   c.executionCtx.waitUntil(analytics.logEvent(
     'generate_completed',
@@ -619,6 +636,8 @@ app.get('/api/admin/users', async (c) => {
         name: f.name?.stringValue,
         role: f.role?.stringValue || 'user',
         credits: parseInt(f.credits?.integerValue || '0'),
+        generationsCount: parseInt(f.generationsCount?.integerValue || '0'),
+        totalSpent: parseFloat(f.totalSpent?.doubleValue || '0'),
         createdAt: f.createdAt?.timestampValue
       }
     }) || []
@@ -635,6 +654,30 @@ app.get('/api/admin/users', async (c) => {
 })
 
 // List all stored prompts
+app.get('/api/admin/prompts', async (c) => {
+  const firebase = c.get('firebase')
+
+  try {
+    const query = {
+      from: [{ collectionId: 'stored_prompts' }],
+      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }]
+    }
+    const results = await firebase.query('stored_prompts', query)
+
+    const prompts = results.map((doc: any) => ({
+      id: doc.id,
+      name: doc.name?.stringValue || 'Untitled',
+      prompt: doc.prompt?.stringValue,
+      tags: doc.tags?.arrayValue?.values?.map((v: any) => v.stringValue) || [],
+      imageUrl: doc.imageUrl?.stringValue,
+      createdAt: doc.createdAt?.timestampValue
+    }))
+
+    return c.json({ status: 'success', prompts })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+})
 
 // Create new stored prompt
 app.post('/api/admin/prompts', async (c) => {

@@ -53,6 +53,8 @@ export function UserManager() {
                             <th className="p-4">User</th>
                             <th className="p-4">Role</th>
                             <th className="p-4">Credits</th>
+                            <th className="p-4">Generations</th>
+                            <th className="p-4">Spent</th>
                             <th className="p-4">Joined</th>
                             <th className="p-4"></th>
                         </tr>
@@ -75,6 +77,8 @@ export function UserManager() {
                                         </span>
                                     </td>
                                     <td className="p-4 font-mono">{user.credits}</td>
+                                    <td className="p-4 font-mono text-center">{user.generationsCount || 0}</td>
+                                    <td className="p-4 font-mono text-green-400">${(user.totalSpent || 0).toFixed(2)}</td>
                                     <td className="p-4 text-sm text-gray-400">
                                         {new Date(user.createdAt).toLocaleDateString()}
                                     </td>

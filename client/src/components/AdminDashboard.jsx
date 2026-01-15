@@ -44,8 +44,8 @@ export function AdminDashboard() {
                             key={item.id}
                             onClick={() => setActiveTab(item.id)}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === item.id
-                                    ? 'bg-violet-600/20 text-violet-300 border border-violet-500/30'
-                                    : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                                ? 'bg-violet-600/20 text-violet-300 border border-violet-500/30'
+                                : 'text-gray-400 hover:bg-white/5 hover:text-white'
                                 }`}
                         >
                             <item.icon size={20} />
@@ -62,13 +62,13 @@ export function AdminDashboard() {
                         <ArrowLeft size={20} />
                         <span className="font-medium">Back to App</span>
                     </button>
-                    {/* <button 
+                    <button
                         onClick={signOut}
                         className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors"
                     >
                         <LogOut size={20} />
                         <span className="font-medium">Sign Out</span>
-                    </button> */}
+                    </button>
                 </div>
             </aside>
 
