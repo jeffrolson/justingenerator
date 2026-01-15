@@ -249,6 +249,8 @@ app.post('/api/generate', async (c) => {
   const file = body['image'] as File
   const presetId = body['presetId'] as string
   const remixFrom = body['remixFrom'] as string
+  // To track usage if it came from a stored prompt
+  let storedPromptId: string | undefined = undefined;
 
   let prompt = 'A stylish portrait'
 
@@ -256,6 +258,17 @@ app.post('/api/generate', async (c) => {
     const preset = PRESETS.find(p => p.id === presetId)
     if (preset) {
       prompt = preset.prompt
+    } else {
+      // Check stored prompts
+      try {
+        const stored = await firebase.firestore('GET', `stored_prompts/${presetId}`) as any;
+        if (stored && stored.fields) {
+          prompt = stored.fields.prompt?.stringValue;
+          storedPromptId = presetId;
+        }
+      } catch (e) {
+        console.warn(`Preset ${presetId} not found in hardcoded or stored list`);
+      }
     }
   } else if (remixFrom) {
     if (remixFrom.startsWith('seed-')) {
@@ -264,6 +277,17 @@ app.post('/api/generate', async (c) => {
       if (preset) {
         prompt = preset.prompt
         console.log(`Remixing from seed preset: ${presetId}`)
+      } else {
+        // Check stored prompts for seed remix
+        try {
+          const stored = await firebase.firestore('GET', `stored_prompts/${presetId}`) as any;
+          if (stored && stored.fields) {
+            prompt = stored.fields.prompt?.stringValue;
+            storedPromptId = presetId;
+          }
+        } catch (e) {
+          console.warn(`Remix seed preset ${presetId} not found`);
+        }
       }
     } else {
       try {
@@ -281,7 +305,7 @@ app.post('/api/generate', async (c) => {
   c.executionCtx.waitUntil(analytics.logEvent(
     'generate_started',
     user.sub,
-    { prompt, presetId: presetId || 'custom', creditsBefore: credits, remixFrom }
+    { prompt, presetId: presetId || storedPromptId || 'custom', creditsBefore: credits, remixFrom }
   ))
 
   if (!file) {
@@ -422,7 +446,6 @@ app.post('/api/generate', async (c) => {
 
 
 
-  // 8. Record Generation in Firestore
   await firebase.firestore('PATCH', `generations/${genId}`, {
     fields: {
       userId: { stringValue: user.sub },
@@ -437,7 +460,8 @@ app.post('/api/generate', async (c) => {
       likesCount: { integerValue: 0 },
       bookmarksCount: { integerValue: 0 },
       isPublic: { booleanValue: false },
-      remixFrom: remixFrom ? { stringValue: remixFrom } : { nullValue: null }
+      remixFrom: remixFrom ? { stringValue: remixFrom } : { nullValue: null },
+      storedPromptId: storedPromptId ? { stringValue: storedPromptId } : { nullValue: null }
     }
   })
 
@@ -456,6 +480,21 @@ app.post('/api/generate', async (c) => {
     })
   } catch (e) {
     console.warn("Failed to increment generations count", e)
+  }
+
+  // Increment Stored Prompt Usage (Optimistic)
+  if (storedPromptId) {
+    try {
+      // We'll trust that the prompt exists if we found it earlier, but check for safety or just blind patch?
+      // Blind PATCH with transform would be ideal but sticking to read-modify for consistency with limited Firestore REST API support in this codebase
+      const promptDoc: any = await firebase.firestore('GET', `stored_prompts/${storedPromptId}`);
+      const currentCount = parseInt(promptDoc.fields?.generationsCount?.integerValue || '0');
+      await firebase.firestore('PATCH', `stored_prompts/${storedPromptId}?updateMask.fieldPaths=generationsCount`, {
+        fields: { generationsCount: { integerValue: currentCount + 1 } }
+      });
+    } catch (e) {
+      console.warn(`Failed to increment stats for prompt ${storedPromptId}`, e);
+    }
   }
 
   // Log success
@@ -670,7 +709,9 @@ app.get('/api/admin/prompts', async (c) => {
       prompt: doc.prompt?.stringValue,
       tags: doc.tags?.arrayValue?.values?.map((v: any) => v.stringValue) || [],
       imageUrl: doc.imageUrl?.stringValue,
-      createdAt: doc.createdAt?.timestampValue
+      createdAt: doc.createdAt?.timestampValue,
+      generationsCount: parseInt(doc.generationsCount?.integerValue || '0'),
+      updatedAt: doc.updatedAt?.timestampValue
     }))
 
     return c.json({ status: 'success', prompts })
@@ -721,11 +762,70 @@ app.post('/api/admin/prompts', async (c) => {
       tags: { arrayValue: { values: tags.map(t => ({ stringValue: t })) } },
       imageUrl: { stringValue: imagePath },
       createdAt: { timestampValue: new Date().toISOString() },
-      createdBy: { stringValue: user.sub }
+      updatedAt: { timestampValue: new Date().toISOString() },
+      createdBy: { stringValue: user.sub },
+      generationsCount: { integerValue: 0 }
     }
   })
 
   return c.json({ status: 'success', id: promptId })
+})
+
+// Update existing stored prompt
+app.put('/api/admin/prompts/:id', async (c) => {
+  const id = c.req.param('id')
+  const user = c.get('user')
+  const firebase = c.get('firebase')
+
+  let body;
+  try {
+    body = await c.req.parseBody()
+  } catch (e) {
+    return c.json({ error: 'Invalid form data' }, 400)
+  }
+
+  const name = body['name'] as string
+  const prompt = body['prompt'] as string
+  const tagsStr = body['tags'] as string
+  const file = body['image'] as File
+
+  if (!name || !prompt) {
+    return c.json({ error: 'Missing required fields' }, 400)
+  }
+
+  const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(Boolean) : []
+
+  let fieldsToUpdate: any = {
+    name: { stringValue: name },
+    prompt: { stringValue: prompt },
+    tags: { arrayValue: { values: tags.map(t => ({ stringValue: t })) } },
+    updatedAt: { timestampValue: new Date().toISOString() }
+  };
+
+  let updateMask = 'updateMask.fieldPaths=name&updateMask.fieldPaths=prompt&updateMask.fieldPaths=tags&updateMask.fieldPaths=updatedAt';
+
+  // Handle Image Update if provided
+  if (file) {
+    const fileExt = file.name.split('.').pop() || 'jpg'
+    const imagePath = `prompts/${id}.${fileExt}` // Overwrite existing path likely, or new one
+    // We should probably check existing path but for now reusing ID is fine or simple suffix
+
+    await c.env.BUCKET.put(imagePath, await file.arrayBuffer(), {
+      customMetadata: { type: 'prompt-reference-update' }
+    })
+
+    fieldsToUpdate.imageUrl = { stringValue: imagePath };
+    updateMask += '&updateMask.fieldPaths=imageUrl';
+  }
+
+  try {
+    await firebase.firestore('PATCH', `stored_prompts/${id}?${updateMask}`, {
+      fields: fieldsToUpdate
+    })
+    return c.json({ status: 'success', id })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
 })
 
 // Delete stored prompt
