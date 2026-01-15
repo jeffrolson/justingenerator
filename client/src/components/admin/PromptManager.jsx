@@ -398,15 +398,21 @@ export function PromptManager() {
                                         <tr key={prompt.id} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
                                             <td className="p-4">
                                                 <div className="w-12 h-12 rounded-lg overflow-hidden bg-black/40 border border-white/10">
-                                                    {prompt.imageUrl ? (
-                                                        <img
-                                                            src={prompt.imageUrl.startsWith('http') ? prompt.imageUrl : `${import.meta.env.VITE_API_URL}/api/image/${encodeURIComponent(prompt.imageUrl)}`}
-                                                            alt={prompt.name}
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-600">No Img</div>
-                                                    )}
+
+                                                    {
+                                                        prompt.imageUrl ? (
+                                                            <img
+                                                                src={prompt.imageUrl.startsWith('http')
+                                                                    ? prompt.imageUrl
+                                                                    : `${(import.meta.env.VITE_API_URL || 'http://localhost:8787').replace(/\/$/, '')}/api/image/${encodeURIComponent(prompt.imageUrl)}`
+                                                                }
+                                                                alt={prompt.name}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-xs text-gray-600">No Img</div>
+                                                        )
+                                                    }
                                                 </div>
                                             </td>
                                             <td className="p-4">
