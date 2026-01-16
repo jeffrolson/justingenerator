@@ -90,7 +90,7 @@ export function Overview() {
     const { kpis, charts } = data;
 
     return (
-        <div className={`space-y-8 max-w-7xl mx-auto transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+        <div className={`space-y-6 max-w-[1600px] mx-auto transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
             {loading && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-[2px]">
                     <div className="bg-[#1a1a1a] border border-white/10 p-4 rounded-xl shadow-2xl flex items-center gap-3">

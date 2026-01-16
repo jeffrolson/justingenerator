@@ -70,7 +70,7 @@ export function Settings() {
     if (loading) return <div className="text-white text-center p-8">Loading Settings...</div>;
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8">
+        <div className="max-w-[1600px] mx-auto space-y-8">
             <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-violet-500/20 rounded-lg text-violet-300">

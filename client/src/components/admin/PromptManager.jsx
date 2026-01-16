@@ -231,7 +231,7 @@ export function PromptManager() {
     };
 
     return (
-        <div className="text-white max-w-7xl mx-auto">
+        <div className="text-white max-w-[1600px] mx-auto">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div>
                     <h2 className="text-2xl font-bold">Prompt Management</h2>

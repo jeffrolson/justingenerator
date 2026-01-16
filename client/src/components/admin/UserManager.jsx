@@ -65,7 +65,7 @@ export function UserManager() {
     }, [search, sortField, sortOrder]);
 
     return (
-        <div className="max-w-6xl mx-auto text-white">
+        <div className="max-w-[1600px] mx-auto text-white">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold">User Management</h2>
                 <div className="relative">
