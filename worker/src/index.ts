@@ -529,11 +529,18 @@ app.post('/api/generate', async (c) => {
     }
 
     const result = await response.json() as any
-    const imagePart = result.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData)
+    const candidate = result.candidates?.[0]
+    const imagePart = candidate?.content?.parts?.find((p: any) => p.inlineData)
     const usage = result.usageMetadata || {}
 
     if (!imagePart) {
-      throw new Error('No image returned from Gemini')
+      const finishReason = candidate?.finishReason
+      const blockReason = result.promptFeedback?.blockReason || candidate?.safetyRatings?.find((r: any) => r.blocked)?.category
+
+      if (finishReason === 'SAFETY' || blockReason) {
+        throw new Error('Generation blocked by safety filters. Gemini is sensitive about transformations of certain photos (like children).')
+      }
+      throw new Error(`No image returned from Gemini (Reason: ${finishReason || 'Unknown'})`)
     }
 
     // Convert base64 back to ArrayBuffer using Buffer
