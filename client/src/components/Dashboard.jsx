@@ -879,8 +879,8 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                                 className="w-full h-full object-cover rounded-xl transition-transform duration-700 group-hover:scale-105"
                                             />
 
-                                            {/* Quick Actions Overlay */}
-                                            <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                            {/* Quick Actions Overlay - Always visible on mobile, hover on desktop */}
+                                            <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handleInteraction('like', item); }}
                                                     className={`p-2 rounded-full backdrop-blur-md border transition-all hover:scale-110 ${item.isLiked ? 'bg-rose-500/20 border-rose-500/50 text-rose-400' : 'bg-black/40 border-white/10 text-white/70 hover:text-rose-400'}`}
@@ -929,21 +929,30 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                                     ))}
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-1 bg-white/5 rounded-full p-1 border border-white/5">
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-1 bg-white/5 rounded-full p-1 border border-white/5">
+                                                    <button
+                                                        onClick={() => handleVote(item.id, 'up')}
+                                                        className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-green-400"
+                                                    >
+                                                        <ThumbsUp className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <span className="text-[10px] font-bold text-slate-300 min-w-[12px] text-center">
+                                                        {item.votes || 0}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => handleVote(item.id, 'down')}
+                                                        className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-red-400"
+                                                    >
+                                                        <ThumbsDown className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
                                                 <button
-                                                    onClick={() => handleVote(item.id, 'up')}
-                                                    className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-green-400"
+                                                    onClick={(e) => { e.stopPropagation(); handleShare(item); }}
+                                                    className="p-2.5 bg-violet-600/10 hover:bg-violet-600/20 text-violet-400 rounded-full border border-violet-500/20 transition-all hover:scale-110 active:scale-95 shadow-lg shadow-violet-500/5"
+                                                    title="Share Masterpiece"
                                                 >
-                                                    <ThumbsUp className="w-3.5 h-3.5" />
-                                                </button>
-                                                <span className="text-[10px] font-bold text-slate-300 min-w-[12px] text-center">
-                                                    {item.votes || 0}
-                                                </span>
-                                                <button
-                                                    onClick={() => handleVote(item.id, 'down')}
-                                                    className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-red-400"
-                                                >
-                                                    <ThumbsDown className="w-3.5 h-3.5" />
+                                                    <Share2 className="w-4 h-4" />
                                                 </button>
                                             </div>
                                         </div>
@@ -953,7 +962,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                         );
                     })()}
                 </section>
-            </div>
+            </div >
 
             {/* Full Size Modal - Outside of animated transform container */}
             {
