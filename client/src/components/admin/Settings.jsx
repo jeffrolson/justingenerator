@@ -242,6 +242,28 @@ export function Settings() {
                                 <div className="text-xs text-gray-500">Get alerted whenever a new user registers</div>
                             </div>
                         </label>
+
+                        <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
+                            <input
+                                type="checkbox"
+                                className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
+                                checked={settings.telegram?.events?.includes('payment') ?? false}
+                                onChange={(e) => {
+                                    const currentEvents = settings.telegram?.events || ['signup'];
+                                    const newEvents = e.target.checked
+                                        ? [...currentEvents, 'payment']
+                                        : currentEvents.filter(ev => ev !== 'payment');
+                                    setSettings({
+                                        ...settings,
+                                        telegram: { ...settings.telegram, events: newEvents }
+                                    });
+                                }}
+                            />
+                            <div>
+                                <div className="text-white font-medium">New Payment</div>
+                                <div className="text-xs text-gray-500">Get notified when a user makes a purchase</div>
+                            </div>
+                        </label>
                     </div>
 
                     {/* Test Button */}

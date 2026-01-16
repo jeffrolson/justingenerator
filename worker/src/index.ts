@@ -1832,6 +1832,38 @@ app.post('/api/stripe/webhook', async (c) => {
         }
 
         c.executionCtx.waitUntil(analytics.logEvent('payment_success', userId, { amount: session.amount_total, type, batchTriggered: !!originalPath }))
+
+        // Send Telegram Notification for Payments
+        if (c.env.TELEGRAM_BOT_TOKEN && c.env.TELEGRAM_CHAT_ID) {
+          try {
+            const settingsDoc: any = await firebase.firestore('GET', 'settings/config').catch(() => null)
+            const telegramSettings = settingsDoc?.fields?.telegram?.mapValue?.fields
+            const enabled = telegramSettings?.enabled?.booleanValue ?? true
+            const events = telegramSettings?.events?.arrayValue?.values?.map((v: any) => v.stringValue) || ['signup']
+
+            if (enabled && events.includes('payment')) {
+              const amount = (session.amount_total / 100).toFixed(2)
+              const currency = (session.currency || 'usd').toUpperCase()
+              const typeLabel = type === 'pro_sub' ? 'Pro Subscription' : '10 Credits Pack'
+              const userEmail = session.customer_details?.email || 'Unknown User'
+
+              const paymentMsg = `💰 *New Payment Received!*
+
+💵 *Amount:* ${amount} ${currency}
+📦 *Product:* ${typeLabel}
+📧 *Customer:* ${userEmail}
+🆔 *User ID:* \`${userId}\``
+
+              c.executionCtx.waitUntil(sendTelegramMessage(
+                c.env.TELEGRAM_BOT_TOKEN,
+                c.env.TELEGRAM_CHAT_ID,
+                paymentMsg
+              ))
+            }
+          } catch (te) {
+            console.error('[Webhook] Telegram notification failed:', te)
+          }
+        }
       }
     }
 
