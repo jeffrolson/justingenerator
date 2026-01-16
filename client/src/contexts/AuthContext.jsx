@@ -35,11 +35,11 @@ export function AuthProvider({ children }) {
             setUser(firebaseUser);
 
             if (firebaseUser) {
-                // Sync with backend
                 try {
                     const token = await firebaseUser.getIdToken();
                     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
-                    console.log("Syncing with backend at:", apiUrl);
+                    console.log(`[AuthContext] Syncing with backend: ${apiUrl}/api/auth/verify`);
+
                     const res = await fetch(`${apiUrl}/api/auth/verify`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -51,14 +51,14 @@ export function AuthProvider({ children }) {
 
                     if (res.ok) {
                         const data = await res.json();
-                        console.log("Backend sync successful:", data);
+                        console.log("[AuthContext] Backend sync success. Role:", data.user?.role?.stringValue);
                         setBackendUser(data.user);
                     } else {
                         const errData = await res.json().catch(() => ({}));
-                        console.error("Backend sync failed with status:", res.status, errData);
+                        console.error(`[AuthContext] Backend sync failed (${res.status}):`, errData);
                     }
                 } catch (error) {
-                    console.error("Failed to sync user with backend:", error);
+                    console.error("[AuthContext] Error during backend sync:", error.message);
                 }
             } else {
                 setBackendUser(null);

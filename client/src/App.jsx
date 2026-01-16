@@ -9,19 +9,38 @@ import PricingPage from './pages/PricingPage';
 
 
 function AppContent() {
-  const { user, loading, backendUser } = useAuth(); // Added backendUser here
+  const { user, loading, backendUser } = useAuth();
   const [remixItem, setRemixItem] = useState(null);
-  const path = window.location.pathname;
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+
+  // Listen for navigation events
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Custom navigate function
+  const navigate = (to, replace = false) => {
+    if (replace) {
+      window.history.replaceState({}, '', to);
+    } else {
+      window.history.pushState({}, '', to);
+    }
+    setCurrentPath(to);
+  };
 
   // Track page views on route change
   useEffect(() => {
     if (typeof window.gtag === 'function') {
       window.gtag('config', 'G-F0M8GJDE9F', {
-        page_path: path,
+        page_path: currentPath,
       });
     }
-  }, [path]);
+  }, [currentPath]);
 
   // Handle post-login remix redirect
   useEffect(() => {
@@ -54,15 +73,19 @@ function AppContent() {
     }
   }, [user]);
 
-  if (path.startsWith('/share/')) {
-    const genId = path.split('/share/')[1];
+  if (currentPath.startsWith('/share/')) {
+    const genId = currentPath.split('/share/')[1];
     return <ShareView genId={genId} />;
   }
 
-  if (path === '/login') {
+  if (currentPath === '/login') {
     if (user) {
-      window.history.pushState({}, '', '/');
-      // No return here, let it fall through to the user check below
+      // If we have a pending redirect (e.g. from /pricing), go there, else go home
+      const pendingRedirect = localStorage.getItem('loginRedirect');
+      const target = pendingRedirect || '/';
+      localStorage.removeItem('loginRedirect');
+      navigate(target, true);
+      return null; // Let the next render handle it
     } else {
       return <Login />;
     }
@@ -77,20 +100,34 @@ function AppContent() {
   }
 
   // Root path /
-  if (path === '/' && !user) {
+  if (currentPath === '/' && !user) {
     return <ExploreFeed onRemix={(item) => setRemixItem(item)} />;
   }
 
-
-
   // Admin Portal (Auth/Role guarded)
-  if (path === '/admin') {
-    if (!user) return <Login />;
-    if (loading) return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="w-12 h-12 border-4 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+  if (currentPath === '/admin') {
+    if (!user) {
+      localStorage.setItem('loginRedirect', '/admin');
+      return <Login />;
+    }
+
+    if (loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-black">
+          <div className="w-12 h-12 border-4 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      );
+    }
+
+    // Wait for backendUser if we have a user
+    if (user && !backendUser) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-black">
+          <div className="w-12 h-12 border-4 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="ml-4 text-violet-400 font-bold">Verifying Admin Access...</p>
+        </div>
+      );
+    }
 
     // Strict check: must have admin role in backendUser
     if (backendUser?.role?.stringValue === 'admin') {
@@ -99,24 +136,26 @@ function AppContent() {
 
     // Hide existence for others
     console.warn("Unauthorized admin access attempt. Redirecting.");
-    window.history.replaceState({}, '', '/');
-    return user ?
-      <Dashboard initialRemix={remixItem} onClearRemix={() => setRemixItem(null)} /> :
-      <ExploreFeed onRemix={(item) => setRemixItem(item)} />;
+    navigate('/', true);
+    return null;
   }
 
   // Pricing Page (Auth guarded)
-  if (path === '/pricing') {
-    return user ? <PricingPage /> : <Login />;
+  if (currentPath === '/pricing') {
+    if (!user) {
+      localStorage.setItem('loginRedirect', '/pricing');
+      return <Login />;
+    }
+    return <PricingPage />;
   }
 
   // Explicit Explore Route (Public/Private)
-  if (path === '/explore') {
+  if (currentPath === '/explore') {
     return (
       <ExploreFeed
         onRemix={(item) => {
           setRemixItem(item);
-          window.history.pushState({}, '', '/'); // Go to dashboard
+          navigate('/');
         }}
       />
     );
