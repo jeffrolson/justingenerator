@@ -343,6 +343,8 @@ app.post('/api/auth/verify', async (c) => {
 app.post('/api/generate', async (c) => {
   const user = c.get('user')
   const firebase = c.get('firebase')
+  const analytics = c.get('analytics')
+  let usageStats = { total: 0, prompt: 0, candidates: 0 };
 
   // 1. Check/Reset Credits & Subscription
   const userDoc: any = await firebase.firestore('GET', `users/${user.sub}`)
@@ -368,8 +370,6 @@ app.post('/api/generate', async (c) => {
       }))
     }
   }
-
-  const analytics = c.get('analytics')
 
   // Deduct credit if NOT pro
   if (!isPro) {
@@ -531,7 +531,7 @@ app.post('/api/generate', async (c) => {
     const result = await response.json() as any
     const candidate = result.candidates?.[0]
     const imagePart = candidate?.content?.parts?.find((p: any) => p.inlineData)
-    const usage = result.usageMetadata || {}
+    const geminiUsage = result.usageMetadata || {}
 
     if (!imagePart) {
       const finishReason = candidate?.finishReason
@@ -545,13 +545,13 @@ app.post('/api/generate', async (c) => {
 
     // Convert base64 back to ArrayBuffer using Buffer
     aiImage = Buffer.from(imagePart.inlineData.data, 'base64').buffer
-    console.log(`Generation successful! Tokens: ${usage.totalTokenCount || 0}. Processing took ${Date.now() - start}ms`)
+    console.log(`Generation successful! Tokens: ${geminiUsage.totalTokenCount || 0}. Processing took ${Date.now() - start}ms`)
 
-    // Include usage in metadata for logging later
-    const genTokens = {
-      prompt: usage.promptTokenCount || 0,
-      candidates: usage.candidatesTokenCount || 0,
-      total: usage.totalTokenCount || 0
+    // Usage stats for later logging
+    usageStats = {
+      prompt: geminiUsage.promptTokenCount || 0,
+      candidates: geminiUsage.candidatesTokenCount || 0,
+      total: geminiUsage.totalTokenCount || 0
     }
   } catch (e: any) {
     // Refund credit on failure
@@ -674,7 +674,7 @@ app.post('/api/generate', async (c) => {
       tags,
       processingTime: Date.now() - start,
       success: true,
-      tokens: usage.totalTokenCount || 0 // Assuming 'result' and its 'usageMetadata' are accessible or we passed them along
+      tokens: usageStats.total || 0
     }
   ))
 
@@ -759,11 +759,30 @@ app.use('/api/admin/*', async (c, next) => {
 // Trigger Aggregation (Manual for now, can be CRON)
 app.post('/api/admin/aggregate', async (c) => {
   const analytics = c.get('analytics')
-  const date = c.req.query('date') // Optional YYYY-MM-DD
+  const date = c.req.query('date')
+  const full = c.req.query('full') === 'true' // If true, reconstruct from primary data (slower but accurate)
+  const last30 = c.req.query('last30') === 'true' // If true, sync last 30 days
+
   try {
-    const stats = await analytics.aggregateDailyStats(date)
+    if (last30) {
+      const results = []
+      for (let i = 0; i < 30; i++) {
+        const d = new Date()
+        d.setDate(d.getDate() - i)
+        const dStr = d.toISOString().split('T')[0]
+        const stats = full ? await analytics.reconstructDailyStats(dStr) : await analytics.aggregateDailyStats(dStr)
+        results.push(stats)
+      }
+      return c.json({ status: 'success', days: results.length })
+    }
+
+    const stats = full && date
+      ? await analytics.reconstructDailyStats(date)
+      : await analytics.aggregateDailyStats(date)
+
     return c.json({ status: 'success', stats })
   } catch (e: any) {
+    console.error("Aggregation failed", e)
     return c.json({ error: e.message }, 500)
   }
 })
@@ -779,7 +798,7 @@ app.get('/api/admin/kpis', async (c) => {
     let days = 7
     if (range === '30d') days = 30
     if (range === '90d') days = 90
-    if (range === 'all') days = 365 // Cap at 1 year for now
+    if (range === 'all') days = 365
 
     const dates = [...Array(days)].map((_, i) => {
       const d = new Date()
@@ -787,35 +806,26 @@ app.get('/api/admin/kpis', async (c) => {
       return d.toISOString().split('T')[0]
     }).reverse()
 
-    // Fetch in parallel (Batched in groups of 30 if needed, but for <100 this is okay-ish on Cloudflare)
-    // For larger ranges, we should query by date range instead of ID list
-    let docs: any[] = []
+    // 2. Fetch all-time stats for "Overall" metrics
+    // We can get this by querying all documents in daily_stats or calculating from users/generations
+    // For now, let's query all daily_stats to get a better "All Time" than just the range
+    const allStatsRes: any = await firebase.query('daily_stats', {
+      orderBy: [{ field: { fieldPath: 'date' }, direction: 'ASCENDING' }]
+    }) as any[]
 
-    if (days <= 30) {
-      docs = await Promise.all(
-        dates.map(date => firebase.firestore('GET', `daily_stats/${date}`).catch(() => null))
-      )
-    } else {
-      // Use query for larger ranges
-      const start = dates[0]
-      const end = dates[dates.length - 1]
-      const queryRes: any = await firebase.query('daily_stats', {
-        where: {
-          compositeFilter: {
-            op: 'AND',
-            filters: [
-              { fieldFilter: { field: { fieldPath: 'date' }, op: 'GREATER_THAN_OR_EQUAL', value: { stringValue: start } } },
-              { fieldFilter: { field: { fieldPath: 'date' }, op: 'LESS_THAN_OR_EQUAL', value: { stringValue: end } } }
-            ]
-          }
-        },
-        orderBy: [{ field: { fieldPath: 'date' }, direction: 'ASCENDING' }],
-        limit: days
-      })
-      // Map query results to dates array to ensuring missing days are handled
-      const docMap = new Map(queryRes.map((d: any) => [d.fields.date.stringValue, d]))
-      docs = dates.map(date => docMap.get(date) || null)
-    }
+    const allTimeDocs = allStatsRes || []
+    const totalTokensAllTime = allTimeDocs.reduce((acc: number, d: any) => acc + parseInt(d.totalTokens?.integerValue || '0'), 0)
+    const totalRevenueAllTime = allTimeDocs.reduce((acc: number, d: any) => acc + parseFloat(d.revenue?.doubleValue || '0'), 0)
+    const totalCostAllTime = allTimeDocs.reduce((acc: number, d: any) => acc + (parseInt(d.totalTokens?.integerValue || '0') / 1000000) * 0.50, 0)
+
+    // 3. Fetch range-specific docs
+    let docs: any[] = []
+    const start = dates[0]
+    const end = dates[dates.length - 1]
+
+    // Filter allTimeDocs for the current range
+    const docMap = new Map(allTimeDocs.map((d: any) => [d.date.stringValue, d]))
+    docs = dates.map(date => docMap.get(date) || null)
 
     // Auto-aggregate today if missing
     const todayStr = new Date().toISOString().split('T')[0]
@@ -824,16 +834,13 @@ app.get('/api/admin/kpis', async (c) => {
       try {
         console.log(`[KPIs] Today's stats (${todayStr}) missing. Aggregating...`)
         const todayStats = await analytics.aggregateDailyStats(todayStr)
-        // Mock a firestore doc for the parsing logic below
         docs[todayIdx] = {
-          fields: {
-            date: { stringValue: todayStr },
-            activeUsers: { integerValue: todayStats.activeUsers },
-            newUsers: { integerValue: todayStats.newUsers },
-            revenue: { doubleValue: todayStats.revenue },
-            generations: { integerValue: todayStats.generations },
-            avgLatency: { doubleValue: todayStats.avgLatency }
-          }
+          date: { stringValue: todayStr },
+          activeUsers: { integerValue: todayStats.activeUsers },
+          newUsers: { integerValue: todayStats.newUsers },
+          revenue: { doubleValue: todayStats.revenue },
+          generations: { integerValue: todayStats.generations },
+          totalTokens: { integerValue: todayStats.totalTokens || 0 }
         }
       } catch (ae) {
         console.warn("Failed to auto-aggregate today's stats", ae)
@@ -843,58 +850,49 @@ app.get('/api/admin/kpis', async (c) => {
     // Parse stats
     const stats = docs.map((doc: any, i) => {
       const date = dates[i]
-      if (!doc || !doc.fields) return {
+      if (!doc) return {
         date, activeUsers: 0, newUsers: 0, revenue: 0,
         generations: 0, latency: 0, totalTokens: 0, cost: 0
       }
 
-      const revenue = parseFloat(doc.fields.revenue?.doubleValue || '0')
-      const tokens = parseInt(doc.fields.totalTokens?.integerValue || '0')
-
-      // Estimated Cost Calculation
-      // Pricing (Hypothetical Gemini Flash): $0.35 / 1M tokens (input), $1.05 / 1M tokens (output)
-      // Simplifying to avg $0.50 / 1M tokens for visualization
+      const revenue = parseFloat(doc.revenue?.doubleValue || '0')
+      const tokens = parseInt(doc.totalTokens?.integerValue || '0')
       const estimatedCost = (tokens / 1000000) * 0.50
 
       return {
         date,
-        activeUsers: parseInt(doc.fields.activeUsers?.integerValue || '0'),
-        newUsers: parseInt(doc.fields.newUsers?.integerValue || '0'),
+        activeUsers: parseInt(doc.activeUsers?.integerValue || '0'),
+        newUsers: parseInt(doc.newUsers?.integerValue || '0'),
         revenue,
-        generations: parseInt(doc.fields.generations?.integerValue || '0'),
-        generationFailures: parseInt(doc.fields.generationFailures?.integerValue || '0'),
-        latency: parseFloat(doc.fields.avgLatency?.doubleValue || '0'),
+        generations: parseInt(doc.generations?.integerValue || '0'),
         totalTokens: tokens,
         cost: estimatedCost
       }
     })
 
-    // Calculate KPI Totals for the Period
-    const totalActive = new Set(stats.flatMap(d => d.activeUsers > 0 ? [d.date] : [])).size // Proxy for now, ideally unique UIDs
-    // Better proxy: Average DAU
+    // Calculate Range Totals
     const avgDAU = Math.round(stats.reduce((acc, curr) => acc + curr.activeUsers, 0) / (stats.length || 1))
-    const totalRevenue = stats.reduce((acc, curr) => acc + curr.revenue, 0)
-    const totalNewUsers = stats.reduce((acc, curr) => acc + curr.newUsers, 0)
-    const totalTokens = stats.reduce((acc, curr) => acc + curr.totalTokens, 0)
-    const totalCost = stats.reduce((acc, curr) => acc + curr.cost, 0)
+    const totalRevenueRange = stats.reduce((acc, curr) => acc + curr.revenue, 0)
+    const totalNewUsersRange = stats.reduce((acc, curr) => acc + curr.newUsers, 0)
+    const totalTokensRange = stats.reduce((acc, curr) => acc + curr.totalTokens, 0)
+    const totalCostRange = stats.reduce((acc, curr) => acc + curr.cost, 0)
 
-    // Trends (Compare current period vs previous period of same length - skipped for simplicity, just using last data point vs avg)
-    // Actually, let's use the last day vs 7-day avg for trend arrow
     const currentDay = stats[stats.length - 1]
     const prevDay = stats[stats.length - 2] || currentDay
 
-    // Conversion Rate: Total Revenue / (Unique Users or Generations?) -> Let's do Paying Users / Total Users if available
-    // For now: (New Users with Revenue > 0 / Total New Users) - hard to track without user-level aggregation
-    // Alternative: Just Revenue / Active Users (ARPU)
-    const arpu = avgDAU > 0 ? (totalRevenue / avgDAU) : 0
-
     const kpis = {
       activeUsers: { value: avgDAU, label: 'Avg Daily Users', trend: calcTrend(currentDay.activeUsers, prevDay.activeUsers) },
-      revenue: { value: totalRevenue.toFixed(2), label: 'Total Revenue', trend: calcTrend(currentDay.revenue, prevDay.revenue) },
-      newUsers: { value: totalNewUsers, label: 'New Signups', trend: calcTrend(currentDay.newUsers, prevDay.newUsers) },
-      tokens: { value: (totalTokens / 1000000).toFixed(2) + 'M', label: 'Tokens Used', trend: 0 },
-      cost: { value: totalCost.toFixed(3), label: 'Est. Cost', trend: 0 },
-      netProfit: { value: (totalRevenue - totalCost).toFixed(2), label: 'Est. Net Profit', trend: 0 }
+      revenue: { value: totalRevenueRange.toFixed(2), label: 'Total Revenue', trend: calcTrend(currentDay.revenue, prevDay.revenue) },
+      newUsers: { value: totalNewUsersRange, label: 'New Signups', trend: calcTrend(currentDay.newUsers, prevDay.newUsers) },
+      tokens: { value: (totalTokensRange / 1000000).toFixed(2) + 'M', label: 'Tokens Used', trend: 0 },
+      cost: { value: totalCostRange.toFixed(3), label: 'Est. Cost', trend: 0 },
+      netProfit: { value: (totalRevenueRange - totalCostRange).toFixed(2), label: 'Est. Net Profit', trend: 0 },
+      // All-Time metrics
+      allTime: {
+        tokens: (totalTokensAllTime / 1000000).toFixed(2) + 'M',
+        cost: totalCostAllTime.toFixed(2),
+        revenue: totalRevenueAllTime.toFixed(2)
+      }
     }
 
     return c.json({

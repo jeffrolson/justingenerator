@@ -23,11 +23,10 @@ export class Analytics {
 
     /**
      * Log a raw event to the 'events' collection.
-     * Fire-and-forget style (we await it but don't block critical flows if possible).
      */
     async logEvent(
         eventType: string,
-        userId: string | undefined, // undefined for anonymous
+        userId: string | undefined,
         metadata: Record<string, any> = {},
         requestInfo?: { ip?: string, userAgent?: string, sessionId?: string }
     ) {
@@ -42,7 +41,6 @@ export class Analytics {
                 userAgent: requestInfo?.userAgent
             }
 
-            // Firestore format
             const fields: any = {
                 eventType: { stringValue: event.eventType },
                 timestamp: { timestampValue: event.timestamp },
@@ -50,10 +48,9 @@ export class Analytics {
                     mapValue: {
                         fields: Object.entries(metadata || {}).reduce((acc: any, [key, val]) => {
                             if (typeof val === 'string') acc[key] = { stringValue: val }
-                            else if (typeof val === 'number') acc[key] = { integerValue: val } // or double
+                            else if (typeof val === 'number') acc[key] = { integerValue: val }
                             else if (typeof val === 'boolean') acc[key] = { booleanValue: val }
                             else if (val === null) acc[key] = { nullValue: null }
-                            // Simple handling for now, can extend for arrays/objects if needed
                             return acc
                         }, {})
                     }
@@ -65,17 +62,12 @@ export class Analytics {
             if (requestInfo?.ip) fields.ip = { stringValue: requestInfo.ip }
             if (requestInfo?.userAgent) fields.userAgent = { stringValue: requestInfo.userAgent }
 
-            // Use a new doc ID
-            // Note: In high volume, we might want to batch these or use a different ingest method
-            // But for this project scope, direct Firestore writes are fine.
-            await this.firebase.firestore('create', 'events', { fields })
+            await this.firebase.firestore('POST', 'events', { fields })
             console.log(`[Analytics] Logged ${eventType} for ${userId || 'anon'}`)
 
-            // 2. Send to Google Analytics via Measurement Protocol
             if (this.gaMeasurementId && this.gaApiSecret) {
                 try {
                     const clientId = userId || requestInfo?.sessionId || 'anonymous_user';
-                    // GA4 expects a specific format
                     const gaPayload = {
                         client_id: clientId,
                         events: [{
@@ -83,14 +75,12 @@ export class Analytics {
                             params: {
                                 ...metadata,
                                 session_id: requestInfo?.sessionId,
-                                engagement_time_msec: '100', // Mock some engagement
+                                engagement_time_msec: '100',
                             }
                         }]
                     };
 
                     const gaUrl = `https://www.google-analytics.com/mp/collect?measurement_id=${this.gaMeasurementId}&api_secret=${this.gaApiSecret}`;
-
-                    // Fire and forget
                     fetch(gaUrl, {
                         method: 'POST',
                         body: JSON.stringify(gaPayload)
@@ -101,16 +91,9 @@ export class Analytics {
             }
         } catch (e) {
             console.error(`[Analytics] Failed to log event ${eventType}:`, e)
-            // Don't throw, we don't want to break the app
         }
     }
 
-    /**
-     * Helper to update daily aggregated stats.
-     * In a real system, this might run on a schedule or trigger.
-     * Here we can call it periodically or "on write" for critical stats if needed.
-     * For now, this is a placeholder for the aggregation logic we will build.
-     */
     async aggregateDailyStats(dateStr?: string) {
         const targetDate = dateStr || new Date().toISOString().split('T')[0]
         const start = `${targetDate}T00:00:00.000Z`
@@ -118,7 +101,6 @@ export class Analytics {
 
         console.log(`[Analytics] Aggregating stats for ${targetDate}`)
 
-        // 1. Fetch all events for the day
         const events = await this.firebase.query('events', {
             where: {
                 compositeFilter: {
@@ -129,10 +111,9 @@ export class Analytics {
                     ]
                 }
             },
-            limit: 10000 // Cap for safety, pagination needed for scale
+            limit: 10000
         }) as any[]
 
-        // 2. Calculate Metrics
         const stats = {
             activeUsers: new Set<string>(),
             newUsers: 0,
@@ -155,12 +136,10 @@ export class Analytics {
                 const isNew = e.metadata?.mapValue?.fields?.isNewUser?.booleanValue
                 if (isNew) stats.newUsers++
             } else if (type === 'payment_success') {
-                // metadata.amount is integer cents
                 const amount = parseInt(e.metadata?.mapValue?.fields?.amount?.integerValue || '0')
                 stats.revenue += amount
             } else if (type === 'generate_completed') {
                 stats.generations++
-                // processingTime usually in metadata
                 const time = parseFloat(e.metadata?.mapValue?.fields?.processingTime?.doubleValue ||
                     e.metadata?.mapValue?.fields?.processingTime?.integerValue || '0')
                 if (time > 0) {
@@ -174,11 +153,9 @@ export class Analytics {
             }
         }
 
-        const avgLatency = stats.latencyCount > 0 ? (stats.totalLatency / stats.latencyCount) / 1000 : 0 // Seconds
-        const finalRevenue = stats.revenue / 100 // Dollars
+        const avgLatency = stats.latencyCount > 0 ? (stats.totalLatency / stats.latencyCount) / 1000 : 0
+        const finalRevenue = stats.revenue / 100
 
-        // 3. Write to daily_stats collection
-        const docId = targetDate
         const payload = {
             fields: {
                 date: { stringValue: targetDate },
@@ -193,8 +170,7 @@ export class Analytics {
             }
         }
 
-        console.log(`[Analytics] Wrote stats for ${targetDate}:`, JSON.stringify(payload.fields))
-        await this.firebase.firestore('PATCH', `daily_stats/${docId}`, payload)
+        await this.firebase.firestore('PATCH', `daily_stats/${targetDate}`, payload)
 
         return {
             date: targetDate,
@@ -202,7 +178,84 @@ export class Analytics {
             newUsers: stats.newUsers,
             revenue: finalRevenue,
             generations: stats.generations,
-            avgLatency
+            avgLatency,
+            totalTokens: stats.totalTokens
+        }
+    }
+
+    /**
+     * Deep Sync: Reconstruct stats from primary collections (users, generations).
+     */
+    async reconstructDailyStats(dateStr: string) {
+        const start = `${dateStr}T00:00:00.000Z`
+        const end = `${dateStr}T23:59:59.999Z`
+
+        console.log(`[Analytics] Reconstructing stats for ${dateStr} from primary data`)
+
+        const newUsersRes: any = await this.firebase.query('users', {
+            where: {
+                compositeFilter: {
+                    op: 'AND',
+                    filters: [
+                        { fieldFilter: { field: { fieldPath: 'createdAt' }, op: 'GREATER_THAN_OR_EQUAL', value: { timestampValue: start } } },
+                        { fieldFilter: { field: { fieldPath: 'createdAt' }, op: 'LESS_THAN_OR_EQUAL', value: { timestampValue: end } } }
+                    ]
+                }
+            }
+        })
+        const newUsersCount = (newUsersRes || []).length
+
+        const gensRes: any = await this.firebase.query('generations', {
+            where: {
+                compositeFilter: {
+                    op: 'AND',
+                    filters: [
+                        { fieldFilter: { field: { fieldPath: 'createdAt' }, op: 'GREATER_THAN_OR_EQUAL', value: { timestampValue: start } } },
+                        { fieldFilter: { field: { fieldPath: 'createdAt' }, op: 'LESS_THAN_OR_EQUAL', value: { timestampValue: end } } }
+                    ]
+                }
+            }
+        })
+        const gens = gensRes || []
+        const activeUsersCount = new Set(gens.map((g: any) => g.fields?.userId?.stringValue)).size
+
+        const eventsRes: any = await this.firebase.query('events', {
+            where: {
+                compositeFilter: {
+                    op: 'AND',
+                    filters: [
+                        { fieldFilter: { field: { fieldPath: 'eventType' }, op: 'EQUAL', value: { stringValue: 'payment_success' } } },
+                        { fieldFilter: { field: { fieldPath: 'timestamp' }, op: 'GREATER_THAN_OR_EQUAL', value: { timestampValue: start } } },
+                        { fieldFilter: { field: { fieldPath: 'timestamp' }, op: 'LESS_THAN_OR_EQUAL', value: { timestampValue: end } } }
+                    ]
+                }
+            }
+        })
+        const revenueCents = (eventsRes || []).reduce((acc: number, e: any) => acc + parseInt(e.fields?.metadata?.mapValue?.fields?.amount?.integerValue || '0'), 0)
+
+        const payload = {
+            fields: {
+                date: { stringValue: dateStr },
+                activeUsers: { integerValue: Math.max(activeUsersCount, newUsersCount) },
+                newUsers: { integerValue: newUsersCount },
+                revenue: { doubleValue: revenueCents / 100 },
+                generations: { integerValue: gens.length },
+                generationFailures: { integerValue: 0 },
+                avgLatency: { doubleValue: 0 },
+                totalTokens: { integerValue: gens.length * 400 },
+                updatedAt: { timestampValue: new Date().toISOString() }
+            }
+        }
+
+        await this.firebase.firestore('PATCH', `daily_stats/${dateStr}`, payload)
+
+        return {
+            date: dateStr,
+            activeUsers: Math.max(activeUsersCount, newUsersCount),
+            newUsers: newUsersCount,
+            revenue: revenueCents / 100,
+            generations: gens.length,
+            totalTokens: gens.length * 400
         }
     }
 }

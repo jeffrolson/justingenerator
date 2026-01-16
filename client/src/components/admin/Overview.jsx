@@ -44,16 +44,25 @@ export function Overview() {
         }
     };
 
+    const [syncing, setSyncing] = useState(false);
     const handleSync = async () => {
+        setSyncing(true);
         try {
             const token = await getToken();
-            await fetch(`${import.meta.env.VITE_API_URL}/api/admin/aggregate`, {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/aggregate?last30=true&full=true`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` }
             });
-            loadData();
+            if (res.ok) {
+                await loadData();
+            } else {
+                alert("Sync failed: " + (await res.text()));
+            }
         } catch (e) {
             console.error("Sync failed", e);
+            alert("Sync failed: " + e.message);
+        } finally {
+            setSyncing(false);
         }
     };
 
@@ -74,10 +83,11 @@ export function Overview() {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={handleSync}
-                        className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                        disabled={syncing}
+                        className={`px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2 ${syncing ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                        <Activity size={16} />
-                        Sync Data
+                        <Activity size={16} className={syncing ? 'animate-spin' : ''} />
+                        {syncing ? 'Syncing...' : 'Sync Data'}
                     </button>
                     <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
                         {['7d', '30d', '90d', 'all'].map(r => (
@@ -152,7 +162,7 @@ export function Overview() {
                     trend={kpis.revenue.trend}
                     icon={DollarSign}
                     color="bg-green-500"
-                    label={kpis.revenue.label}
+                    label={`${kpis.revenue.label} (All Time: $${kpis.allTime.revenue})`}
                 />
                 <KPICard
                     title="New Signups"
@@ -168,7 +178,7 @@ export function Overview() {
                     trend={kpis.tokens.trend}
                     icon={Zap}
                     color="bg-amber-500"
-                    label={kpis.tokens.label}
+                    label={`${kpis.tokens.label} (All Time: ${kpis.allTime.tokens})`}
                 />
                 <KPICard
                     title="Est. Usage Cost"
@@ -176,7 +186,7 @@ export function Overview() {
                     trend={kpis.cost.trend}
                     icon={Wallet}
                     color="bg-red-500"
-                    label={kpis.cost.label}
+                    label={`${kpis.cost.label} (All Time: $${kpis.allTime.cost})`}
                 />
                 <KPICard
                     title="Net Profit"
