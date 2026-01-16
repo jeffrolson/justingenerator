@@ -1,19 +1,28 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Search, Trash2 } from 'lucide-react';
+import { Search, Trash2, ArrowUp, ArrowDown, History, X, ExternalLink } from 'lucide-react';
 
 export function UserManager() {
     const { getToken } = useAuth();
     const [users, setUsers] = useState([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(false);
+    const [sortField, setSortField] = useState('createdAt');
+    const [sortOrder, setSortOrder] = useState('DESC');
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [userGenerations, setUserGenerations] = useState([]);
+    const [loadingGenerations, setLoadingGenerations] = useState(false);
 
     const fetchUsers = async () => {
         try {
             setLoading(true);
             const token = await getToken();
-            const query = search ? `?q=${search}` : '';
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users${query}`, {
+            const query = new URLSearchParams({
+                q: search,
+                sortField,
+                sortOrder
+            }).toString();
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users?${query}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();
@@ -25,10 +34,35 @@ export function UserManager() {
         }
     };
 
+    const fetchUserGenerations = async (userId) => {
+        try {
+            setLoadingGenerations(true);
+            const token = await getToken();
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/${userId}/generations`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            setUserGenerations(data.generations || []);
+        } catch (e) {
+            console.error("Failed to fetch generations", e);
+        } finally {
+            setLoadingGenerations(false);
+        }
+    };
+
+    const toggleSort = (field) => {
+        if (sortField === field) {
+            setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC');
+        } else {
+            setSortField(field);
+            setSortOrder('DESC');
+        }
+    };
+
     useEffect(() => {
         const debounce = setTimeout(fetchUsers, 500);
         return () => clearTimeout(debounce);
-    }, [search]);
+    }, [search, sortField, sortOrder]);
 
     return (
         <div className="max-w-6xl mx-auto text-white">
@@ -50,13 +84,33 @@ export function UserManager() {
                 <table className="w-full text-left">
                     <thead className="bg-black/20 text-gray-400 text-sm">
                         <tr>
-                            <th className="p-4">User</th>
+                            <th className="p-4 cursor-pointer hover:text-white transition-colors" onClick={() => toggleSort('name')}>
+                                <div className="flex items-center gap-2">
+                                    User {sortField === 'name' && (sortOrder === 'ASC' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
+                                </div>
+                            </th>
                             <th className="p-4">Role</th>
-                            <th className="p-4">Credits</th>
-                            <th className="p-4">Generations</th>
-                            <th className="p-4">Spent</th>
-                            <th className="p-4">Joined</th>
-                            <th className="p-4"></th>
+                            <th className="p-4 cursor-pointer hover:text-white transition-colors" onClick={() => toggleSort('credits')}>
+                                <div className="flex items-center gap-2">
+                                    Credits {sortField === 'credits' && (sortOrder === 'ASC' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
+                                </div>
+                            </th>
+                            <th className="p-4 cursor-pointer hover:text-white transition-colors" onClick={() => toggleSort('generationsCount')}>
+                                <div className="flex items-center gap-2">
+                                    Generations {sortField === 'generationsCount' && (sortOrder === 'ASC' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
+                                </div>
+                            </th>
+                            <th className="p-4 cursor-pointer hover:text-white transition-colors" onClick={() => toggleSort('totalSpent')}>
+                                <div className="flex items-center gap-2">
+                                    Spent {sortField === 'totalSpent' && (sortOrder === 'ASC' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
+                                </div>
+                            </th>
+                            <th className="p-4 cursor-pointer hover:text-white transition-colors" onClick={() => toggleSort('createdAt')}>
+                                <div className="flex items-center gap-2">
+                                    Joined {sortField === 'createdAt' && (sortOrder === 'ASC' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
+                                </div>
+                            </th>
+                            <th className="p-4 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -83,26 +137,38 @@ export function UserManager() {
                                         {new Date(user.createdAt).toLocaleDateString()}
                                     </td>
                                     <td className="p-4 text-right">
-                                        <button
-                                            onClick={async () => {
-                                                if (window.confirm('Are you sure you want to delete this user? This cannot be undone.')) {
-                                                    try {
-                                                        const token = await getToken();
-                                                        await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/${user.id}`, {
-                                                            method: 'DELETE',
-                                                            headers: { Authorization: `Bearer ${token}` }
-                                                        });
-                                                        setUsers(users.filter(u => u.id !== user.id));
-                                                    } catch (e) {
-                                                        alert('Failed to delete user');
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedUser(user);
+                                                    fetchUserGenerations(user.id);
+                                                }}
+                                                className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"
+                                                title="View History"
+                                            >
+                                                <History size={18} />
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    if (window.confirm('Are you sure you want to delete this user? This cannot be undone.')) {
+                                                        try {
+                                                            const token = await getToken();
+                                                            await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/${user.id}`, {
+                                                                method: 'DELETE',
+                                                                headers: { Authorization: `Bearer ${token}` }
+                                                            });
+                                                            setUsers(users.filter(u => u.id !== user.id));
+                                                        } catch (e) {
+                                                            alert('Failed to delete user');
+                                                        }
                                                     }
-                                                }
-                                            }}
-                                            className="text-gray-500 hover:text-red-400 transition-colors"
-                                            title="Delete User"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
+                                                }}
+                                                className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                                                title="Delete User"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))
@@ -110,6 +176,67 @@ export function UserManager() {
                     </tbody>
                 </table>
             </div>
+
+            {/* User History Modal */}
+            {selectedUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                    <div className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+                        <div className="p-6 border-b border-white/10 flex justify-between items-center bg-black/20">
+                            <div>
+                                <h3 className="text-xl font-bold text-white">{selectedUser.name}</h3>
+                                <p className="text-sm text-gray-400">{selectedUser.email}</p>
+                            </div>
+                            <button onClick={() => setSelectedUser(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {loadingGenerations ? (
+                                <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+                                    <div className="animate-spin mb-4">
+                                        <History size={32} />
+                                    </div>
+                                    <p>Loading history...</p>
+                                </div>
+                            ) : userGenerations.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+                                    <p>No generations found for this user.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {userGenerations.map(gen => (
+                                        <div key={gen.id} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden group">
+                                            <div className="aspect-square relative">
+                                                <img
+                                                    src={import.meta.env.VITE_API_URL + gen.imageUrl}
+                                                    alt={gen.summary || 'Generation'}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity p-4 flex flex-col justify-end">
+                                                    <p className="text-sm text-gray-200 line-clamp-3 mb-2">{gen.prompt}</p>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-xs text-gray-400">
+                                                            {new Date(gen.createdAt).toLocaleString()}
+                                                        </span>
+                                                        <a
+                                                            href={import.meta.env.VITE_API_URL + gen.imageUrl}
+                                                            target="_blank"
+                                                            className="text-white hover:text-indigo-400 p-1"
+                                                        >
+                                                            <ExternalLink size={16} />
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

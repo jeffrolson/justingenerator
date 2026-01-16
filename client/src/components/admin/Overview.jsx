@@ -26,24 +26,38 @@ export function Overview() {
     const [loading, setLoading] = useState(true);
     const [range, setRange] = useState('7d');
 
-    useEffect(() => {
-        const loadData = async () => {
-            setLoading(true);
-            try {
-                const token = await getToken();
-                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/kpis?range=${range}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                const json = await res.json();
-                if (json.status === 'success') {
-                    setData(json);
-                }
-            } catch (e) {
-                console.error("Failed to load KPIs", e);
-            } finally {
-                setLoading(false);
+    const loadData = async () => {
+        setLoading(true);
+        try {
+            const token = await getToken();
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/kpis?range=${range}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const json = await res.json();
+            if (json.status === 'success') {
+                setData(json);
             }
-        };
+        } catch (e) {
+            console.error("Failed to load KPIs", e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSync = async () => {
+        try {
+            const token = await getToken();
+            await fetch(`${import.meta.env.VITE_API_URL}/api/admin/aggregate`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            loadData();
+        } catch (e) {
+            console.error("Sync failed", e);
+        }
+    };
+
+    useEffect(() => {
         loadData();
     }, [range]);
 
@@ -57,23 +71,32 @@ export function Overview() {
             {/* Controls */}
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-white">Platform Overview</h2>
-                <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
-                    {['7d', '30d', '90d', 'all'].map(r => (
-                        <button
-                            key={r}
-                            onClick={() => setRange(r)}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${range === r ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'
-                                }`}
-                        >
-                            {r.toUpperCase()}
-                        </button>
-                    ))}
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={handleSync}
+                        className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                    >
+                        <Activity size={16} />
+                        Sync Data
+                    </button>
+                    <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
+                        {['7d', '30d', '90d', 'all'].map(r => (
+                            <button
+                                key={r}
+                                onClick={() => setRange(r)}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${range === r ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'
+                                    }`}
+                            >
+                                {r.toUpperCase()}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
             {/* External Tools */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <a href="https://analytics.google.com/" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all hover:border-orange-500/30">
+                <a href="https://analytics.google.com/" target="_blank" rel="noopener noreferrer" className="relative z-10 group flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all hover:border-orange-500/30 cursor-pointer">
                     <div className="p-3 bg-orange-500/20 rounded-lg text-orange-500 group-hover:scale-110 transition-transform">
                         <TrendingUp size={24} />
                     </div>
@@ -86,7 +109,7 @@ export function Overview() {
                     </div>
                 </a>
 
-                <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all hover:border-blue-500/30">
+                <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="relative z-10 group flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all hover:border-blue-500/30 cursor-pointer">
                     <div className="p-3 bg-blue-500/20 rounded-lg text-blue-500 group-hover:scale-110 transition-transform">
                         <Cloud size={24} />
                     </div>
@@ -99,7 +122,7 @@ export function Overview() {
                     </div>
                 </a>
 
-                <a href="https://dash.cloudflare.com/" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all hover:border-orange-500/30">
+                <a href="https://dash.cloudflare.com/" target="_blank" rel="noopener noreferrer" className="relative z-10 group flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all hover:border-orange-500/30 cursor-pointer">
                     <div className="p-3 bg-orange-500/20 rounded-lg text-orange-500 group-hover:scale-110 transition-transform">
                         <Globe size={24} />
                     </div>

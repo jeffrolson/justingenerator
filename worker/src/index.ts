@@ -810,6 +810,29 @@ app.get('/api/admin/kpis', async (c) => {
       docs = dates.map(date => docMap.get(date) || null)
     }
 
+    // Auto-aggregate today if missing
+    const todayStr = new Date().toISOString().split('T')[0]
+    const todayIdx = dates.indexOf(todayStr)
+    if (todayIdx !== -1 && !docs[todayIdx]) {
+      try {
+        console.log(`[KPIs] Today's stats (${todayStr}) missing. Aggregating...`)
+        const todayStats = await analytics.aggregateDailyStats(todayStr)
+        // Mock a firestore doc for the parsing logic below
+        docs[todayIdx] = {
+          fields: {
+            date: { stringValue: todayStr },
+            activeUsers: { integerValue: todayStats.activeUsers },
+            newUsers: { integerValue: todayStats.newUsers },
+            revenue: { doubleValue: todayStats.revenue },
+            generations: { integerValue: todayStats.generations },
+            avgLatency: { doubleValue: todayStats.avgLatency }
+          }
+        }
+      } catch (ae) {
+        console.warn("Failed to auto-aggregate today's stats", ae)
+      }
+    }
+
     // Parse stats
     const stats = docs.map((doc: any, i) => {
       const date = dates[i]
@@ -895,9 +918,12 @@ function calcSuccessRate(stat: any) {
 app.get('/api/admin/users', async (c) => {
   const firebase = c.get('firebase')
   const search = c.req.query('q')
+  const sortField = c.req.query('sortField') || 'createdAt'
+  const sortOrder = c.req.query('sortOrder') || 'DESC'
+
   // Simple limit for now
   try {
-    const results = await firebase.firestore('GET', 'users?pageSize=50') as any
+    const results = await firebase.firestore('GET', 'users?pageSize=100') as any
     const users = results.documents?.map((doc: any) => {
       const f = doc.fields
       return {
@@ -912,16 +938,70 @@ app.get('/api/admin/users', async (c) => {
       }
     }) || []
 
-    // In-memory search if q provided (Firestore doesn't support substring search easily)
-    const filtered = search
-      ? users.filter((u: any) => u.email?.includes(search) || u.name?.includes(search))
-      : users
+    // 1. Filter out anonymous and "undefined undefined" users
+    // Also filter based on search query if provided
+    let filtered = users.filter((u: any) => {
+      const isAnonymous = !u.name || u.name === 'Anonymous' || u.name === 'undefined undefined';
+      if (isAnonymous) return false;
+
+      if (search) {
+        const s = search.toLowerCase();
+        return u.email?.toLowerCase().includes(s) || u.name?.toLowerCase().includes(s);
+      }
+      return true;
+    });
+
+    // 2. Sort in-memory
+    filtered.sort((a: any, b: any) => {
+      let valA = a[sortField];
+      let valB = b[sortField];
+
+      // Handle numbers vs strings
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+
+      if (valA < valB) return sortOrder === 'ASC' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'ASC' ? 1 : -1;
+      return 0;
+    });
 
     return c.json({ status: 'success', users: filtered })
   } catch (e: any) {
     return c.json({ error: e.message }, 500)
   }
+})
 
+// Get user generations for monitoring
+app.get('/api/admin/users/:id/generations', async (c) => {
+  const firebase = c.get('firebase')
+  const userId = c.req.param('id')
+
+  try {
+    const results = await firebase.query('generations', {
+      where: {
+        fieldFilter: {
+          field: { fieldPath: 'userId' },
+          op: 'EQUAL',
+          value: { stringValue: userId }
+        }
+      },
+      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+      limit: 50
+    })
+
+    const generations = results.map((doc: any) => ({
+      id: doc.id,
+      prompt: doc.prompt?.stringValue,
+      summary: doc.summary?.stringValue,
+      imageUrl: `/api/image/${encodeURIComponent(doc.resultPath?.stringValue)}`,
+      createdAt: doc.createdAt?.timestampValue,
+      status: doc.status?.stringValue
+    }))
+
+    return c.json({ status: 'success', generations })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
 })
 
 // Delete user
