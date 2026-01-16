@@ -12,9 +12,13 @@ export interface AnalyticsEvent {
 
 export class Analytics {
     private firebase: Firebase
+    private gaMeasurementId: string | undefined
+    private gaApiSecret: string | undefined
 
-    constructor(firebase: Firebase) {
+    constructor(firebase: Firebase, env?: any) {
         this.firebase = firebase
+        this.gaMeasurementId = env?.GA_MEASUREMENT_ID
+        this.gaApiSecret = env?.GA_API_SECRET
     }
 
     /**
@@ -66,6 +70,35 @@ export class Analytics {
             // But for this project scope, direct Firestore writes are fine.
             await this.firebase.firestore('create', 'events', { fields })
             console.log(`[Analytics] Logged ${eventType} for ${userId || 'anon'}`)
+
+            // 2. Send to Google Analytics via Measurement Protocol
+            if (this.gaMeasurementId && this.gaApiSecret) {
+                try {
+                    const clientId = userId || requestInfo?.sessionId || 'anonymous_user';
+                    // GA4 expects a specific format
+                    const gaPayload = {
+                        client_id: clientId,
+                        events: [{
+                            name: eventType,
+                            params: {
+                                ...metadata,
+                                session_id: requestInfo?.sessionId,
+                                engagement_time_msec: '100', // Mock some engagement
+                            }
+                        }]
+                    };
+
+                    const gaUrl = `https://www.google-analytics.com/mp/collect?measurement_id=${this.gaMeasurementId}&api_secret=${this.gaApiSecret}`;
+
+                    // Fire and forget
+                    fetch(gaUrl, {
+                        method: 'POST',
+                        body: JSON.stringify(gaPayload)
+                    }).catch(err => console.error('[Analytics] GA fetch error:', err));
+                } catch (gaError) {
+                    console.error('[Analytics] GA formatting error:', gaError);
+                }
+            }
         } catch (e) {
             console.error(`[Analytics] Failed to log event ${eventType}:`, e)
             // Don't throw, we don't want to break the app

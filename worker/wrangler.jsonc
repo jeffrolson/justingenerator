@@ -6,9 +6,9 @@
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
-	// "vars": {
-	//   "MY_VAR": "my-variable"
-	// },
+	"vars": {
+		"GA_MEASUREMENT_ID": "G-F0M8GJDE9F"
+	},
 	// "kv_namespaces": [
 	//   {
 	//     "binding": "MY_KV_NAMESPACE",

@@ -80,7 +80,7 @@ app.use('/api/*', async (c, next) => {
   }
 
   const firebase = new Firebase(c.env)
-  const analytics = new Analytics(firebase)
+  const analytics = new Analytics(firebase, c.env)
 
   c.set('firebase', firebase)
   c.set('analytics', analytics)
@@ -1754,7 +1754,7 @@ app.post('/api/stripe/webhook', async (c) => {
   try {
     const event = await stripe.webhooks.constructEventAsync(body, signature, c.env.STRIPE_WEBHOOK_SECRET)
     const firebase = new Firebase(c.env)
-    const analytics = new Analytics(firebase)
+    const analytics = new Analytics(firebase, c.env)
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as any

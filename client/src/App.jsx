@@ -14,6 +14,15 @@ function AppContent() {
   const path = window.location.pathname;
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
+  // Track page views on route change
+  useEffect(() => {
+    if (typeof window.gtag === 'function') {
+      window.gtag('config', 'G-F0M8GJDE9F', {
+        page_path: path,
+      });
+    }
+  }, [path]);
+
   // Handle post-login remix redirect
   useEffect(() => {
     if (user) {
