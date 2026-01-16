@@ -70,13 +70,35 @@ export function Overview() {
         loadData();
     }, [range]);
 
-    if (loading && !data) return <div className="text-white text-center p-8 animate-pulse">Loading Analytics...</div>;
-    if (!data) return <div className="text-white text-center p-8">Failed to load data</div>;
+    if (loading && !data) return (
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-white">
+            <Activity size={48} className="animate-spin text-indigo-500 mb-4" />
+            <div className="text-xl font-medium animate-pulse">Loading Analytics...</div>
+        </div>
+    );
+
+    if (!data) return (
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-white/50 bg-white/5 rounded-xl border border-white/10">
+            <AlertCircle size={48} className="text-red-500 mb-4" />
+            <div className="text-xl font-medium">Failed to load analytics data</div>
+            <button onClick={loadData} className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                Retry Loading
+            </button>
+        </div>
+    );
 
     const { kpis, charts } = data;
 
     return (
-        <div className="space-y-8 max-w-7xl mx-auto">
+        <div className={`space-y-8 max-w-7xl mx-auto transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+            {loading && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-[2px]">
+                    <div className="bg-[#1a1a1a] border border-white/10 p-4 rounded-xl shadow-2xl flex items-center gap-3">
+                        <Activity size={20} className="animate-spin text-indigo-500" />
+                        <span className="text-white font-medium">Updating...</span>
+                    </div>
+                </div>
+            )}
             {/* Controls */}
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-white">Platform Overview</h2>
@@ -191,7 +213,7 @@ export function Overview() {
                 <KPICard
                     title="Net Profit"
                     value={`$${kpis.netProfit.value}`}
-                    trend={kpis.cost.trend}
+                    trend={kpis.netProfit.trend}
                     icon={Activity}
                     color="bg-emerald-500"
                     label={kpis.netProfit.label}

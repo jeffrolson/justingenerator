@@ -258,4 +258,190 @@ export class Analytics {
             totalTokens: gens.length * 400
         }
     }
+
+    async aggregateRange(days: number, full: boolean = false) {
+        const now = new Date()
+        const endDay = now.toISOString().split('T')[0]
+        const d = new Date()
+        d.setDate(d.getDate() - (days - 1))
+        const startDay = d.toISOString().split('T')[0]
+
+        console.log(`[Analytics] ${full ? 'Reconstructing' : 'Aggregating'} range: ${startDay} to ${endDay}`)
+
+        const startTS = `${startDay}T00:00:00.000Z`
+        const endTS = `${endDay}T23:59:59.999Z`
+
+        if (full) {
+            const [users, gens, events] = await Promise.all([
+                this.firebase.query('users', {
+                    where: {
+                        compositeFilter: {
+                            op: 'AND',
+                            filters: [
+                                { fieldFilter: { field: { fieldPath: 'createdAt' }, op: 'GREATER_THAN_OR_EQUAL', value: { timestampValue: startTS } } },
+                                { fieldFilter: { field: { fieldPath: 'createdAt' }, op: 'LESS_THAN_OR_EQUAL', value: { timestampValue: endTS } } }
+                            ]
+                        }
+                    }
+                }),
+                this.firebase.query('generations', {
+                    where: {
+                        compositeFilter: {
+                            op: 'AND',
+                            filters: [
+                                { fieldFilter: { field: { fieldPath: 'createdAt' }, op: 'GREATER_THAN_OR_EQUAL', value: { timestampValue: startTS } } },
+                                { fieldFilter: { field: { fieldPath: 'createdAt' }, op: 'LESS_THAN_OR_EQUAL', value: { timestampValue: endTS } } }
+                            ]
+                        }
+                    }
+                }),
+                this.firebase.query('events', {
+                    where: {
+                        compositeFilter: {
+                            op: 'AND',
+                            filters: [
+                                { fieldFilter: { field: { fieldPath: 'eventType' }, op: 'EQUAL', value: { stringValue: 'payment_success' } } },
+                                { fieldFilter: { field: { fieldPath: 'timestamp' }, op: 'GREATER_THAN_OR_EQUAL', value: { timestampValue: startTS } } },
+                                { fieldFilter: { field: { fieldPath: 'timestamp' }, op: 'LESS_THAN_OR_EQUAL', value: { timestampValue: endTS } } }
+                            ]
+                        }
+                    }
+                })
+            ]) as [any[], any[], any[]]
+
+            const dataByDate: Record<string, { newUsers: number, gens: any[], revenue: number }> = {}
+            for (let i = 0; i < days; i++) {
+                const day = new Date()
+                day.setDate(day.getDate() - i)
+                const dateStr = day.toISOString().split('T')[0]
+                dataByDate[dateStr] = { newUsers: 0, gens: [], revenue: 0 }
+            }
+
+            users.forEach(u => {
+                const date = (u.createdAt?.timestampValue || '').split('T')[0]
+                if (dataByDate[date]) dataByDate[date].newUsers++
+            })
+            gens.forEach(g => {
+                const date = (g.createdAt?.timestampValue || g.id.split('_')[0]).split('T')[0]
+                if (dataByDate[date]) dataByDate[date].gens.push(g)
+            })
+            events.forEach(e => {
+                const date = (e.timestamp?.timestampValue || '').split('T')[0]
+                if (dataByDate[date]) {
+                    const amount = parseInt(e.metadata?.mapValue?.fields?.amount?.integerValue || '0')
+                    dataByDate[date].revenue += amount
+                }
+            })
+
+            const patches = Object.entries(dataByDate).map(async ([date, dayData]) => {
+                const activeUsersCount = new Set(dayData.gens.map(g => g.userId?.stringValue)).size
+                const payload = {
+                    fields: {
+                        date: { stringValue: date },
+                        activeUsers: { integerValue: Math.max(activeUsersCount, dayData.newUsers) },
+                        newUsers: { integerValue: dayData.newUsers },
+                        revenue: { doubleValue: dayData.revenue / 100 },
+                        generations: { integerValue: dayData.gens.length },
+                        generationFailures: { integerValue: 0 },
+                        avgLatency: { doubleValue: 0 },
+                        totalTokens: { integerValue: dayData.gens.length * 400 },
+                        updatedAt: { timestampValue: new Date().toISOString() }
+                    }
+                }
+                await this.firebase.firestore('PATCH', `daily_stats/${date}`, payload)
+                return {
+                    date,
+                    activeUsers: Math.max(activeUsersCount, dayData.newUsers),
+                    newUsers: dayData.newUsers,
+                    revenue: dayData.revenue / 100,
+                    generations: dayData.gens.length,
+                    totalTokens: dayData.gens.length * 400
+                }
+            })
+            return Promise.all(patches)
+        } else {
+            const events = await this.firebase.query('events', {
+                where: {
+                    compositeFilter: {
+                        op: 'AND',
+                        filters: [
+                            { fieldFilter: { field: { fieldPath: 'timestamp' }, op: 'GREATER_THAN_OR_EQUAL', value: { timestampValue: startTS } } },
+                            { fieldFilter: { field: { fieldPath: 'timestamp' }, op: 'LESS_THAN_OR_EQUAL', value: { timestampValue: endTS } } }
+                        ]
+                    }
+                }
+            }) as any[]
+
+            const dataByDate: Record<string, any> = {}
+            for (let i = 0; i < days; i++) {
+                const day = new Date()
+                day.setDate(day.getDate() - i)
+                const dateStr = day.toISOString().split('T')[0]
+                dataByDate[dateStr] = {
+                    activeUsers: new Set(),
+                    newUsers: 0,
+                    revenue: 0,
+                    generations: 0,
+                    generationFailures: 0,
+                    totalLatency: 0,
+                    latencyCount: 0,
+                    totalTokens: 0
+                }
+            }
+
+            events.forEach(e => {
+                const date = (e.timestamp?.timestampValue || '').split('T')[0]
+                if (!dataByDate[date]) return
+
+                const type = e.eventType?.stringValue
+                const uid = e.userId?.stringValue
+                if (uid) dataByDate[date].activeUsers.add(uid)
+
+                if (type === 'user_login' && e.metadata?.mapValue?.fields?.isNewUser?.booleanValue) {
+                    dataByDate[date].newUsers++
+                } else if (type === 'payment_success') {
+                    dataByDate[date].revenue += parseInt(e.metadata?.mapValue?.fields?.amount?.integerValue || '0')
+                } else if (type === 'generate_completed') {
+                    dataByDate[date].generations++
+                    const time = parseFloat(e.metadata?.mapValue?.fields?.processingTime?.doubleValue || e.metadata?.mapValue?.fields?.processingTime?.integerValue || '0')
+                    if (time > 0) {
+                        dataByDate[date].totalLatency += time
+                        dataByDate[date].latencyCount++
+                    }
+                    dataByDate[date].totalTokens += parseInt(e.metadata?.mapValue?.fields?.tokens?.integerValue || '0')
+                } else if (type === 'generate_failed') {
+                    dataByDate[date].generationFailures++
+                }
+            })
+
+            const patches = Object.entries(dataByDate).map(async ([date, stats]) => {
+                const avgLatency = stats.latencyCount > 0 ? (stats.totalLatency / stats.latencyCount) / 1000 : 0
+                const payload = {
+                    fields: {
+                        date: { stringValue: date },
+                        activeUsers: { integerValue: stats.activeUsers.size },
+                        newUsers: { integerValue: stats.newUsers },
+                        revenue: { doubleValue: stats.revenue / 100 },
+                        generations: { integerValue: stats.generations },
+                        generationFailures: { integerValue: stats.generationFailures },
+                        avgLatency: { doubleValue: avgLatency },
+                        totalTokens: { integerValue: stats.totalTokens },
+                        updatedAt: { timestampValue: new Date().toISOString() }
+                    }
+                }
+                await this.firebase.firestore('PATCH', `daily_stats/${date}`, payload)
+                return {
+                    date,
+                    activeUsers: stats.activeUsers.size,
+                    newUsers: stats.newUsers,
+                    revenue: stats.revenue / 100,
+                    generations: stats.generations,
+                    generationFailures: stats.generationFailures,
+                    avgLatency,
+                    totalTokens: stats.totalTokens
+                }
+            })
+            return Promise.all(patches)
+        }
+    }
 }

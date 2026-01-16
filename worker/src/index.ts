@@ -765,14 +765,7 @@ app.post('/api/admin/aggregate', async (c) => {
 
   try {
     if (last30) {
-      const results = []
-      for (let i = 0; i < 30; i++) {
-        const d = new Date()
-        d.setDate(d.getDate() - i)
-        const dStr = d.toISOString().split('T')[0]
-        const stats = full ? await analytics.reconstructDailyStats(dStr) : await analytics.aggregateDailyStats(dStr)
-        results.push(stats)
-      }
+      const results = await analytics.aggregateRange(30, full)
       return c.json({ status: 'success', days: results.length })
     }
 
@@ -880,13 +873,16 @@ app.get('/api/admin/kpis', async (c) => {
     const currentDay = stats[stats.length - 1]
     const prevDay = stats[stats.length - 2] || currentDay
 
+    const currentProfit = currentDay.revenue - currentDay.cost
+    const prevProfit = prevDay.revenue - prevDay.cost
+
     const kpis = {
       activeUsers: { value: avgDAU, label: 'Avg Daily Users', trend: calcTrend(currentDay.activeUsers, prevDay.activeUsers) },
       revenue: { value: totalRevenueRange.toFixed(2), label: 'Total Revenue', trend: calcTrend(currentDay.revenue, prevDay.revenue) },
       newUsers: { value: totalNewUsersRange, label: 'New Signups', trend: calcTrend(currentDay.newUsers, prevDay.newUsers) },
-      tokens: { value: (totalTokensRange / 1000000).toFixed(2) + 'M', label: 'Tokens Used', trend: 0 },
-      cost: { value: totalCostRange.toFixed(3), label: 'Est. Cost', trend: 0 },
-      netProfit: { value: (totalRevenueRange - totalCostRange).toFixed(2), label: 'Est. Net Profit', trend: 0 },
+      tokens: { value: (totalTokensRange / 1000000).toFixed(2) + 'M', label: 'Tokens Used', trend: calcTrend(currentDay.totalTokens, prevDay.totalTokens) },
+      cost: { value: totalCostRange.toFixed(3), label: 'Est. Cost', trend: calcTrend(currentDay.cost, prevDay.cost) },
+      netProfit: { value: (totalRevenueRange - totalCostRange).toFixed(2), label: 'Est. Net Profit', trend: calcTrend(currentDay.revenue - currentDay.cost, prevDay.revenue - prevDay.cost) },
       // All-Time metrics
       allTime: {
         tokens: (totalTokensAllTime / 1000000).toFixed(2) + 'M',
