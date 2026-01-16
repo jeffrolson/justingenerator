@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import {
     GoogleAuthProvider,
     signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
     onAuthStateChanged,
     signOut,
     createUserWithEmailAndPassword,
@@ -22,6 +24,20 @@ export function AuthProvider({ children }) {
     const [backendUser, setBackendUser] = useState(null);
 
     useEffect(() => {
+        // Handle redirect result for mobile logins
+        const handleRedirect = async () => {
+            try {
+                const result = await getRedirectResult(auth);
+                if (result) {
+                    console.log("[AuthContext] Redirect login success:", result.user.email);
+                    // User state will be updated by onAuthStateChanged
+                }
+            } catch (error) {
+                console.error("[AuthContext] Error getting redirect result:", error);
+            }
+        };
+        handleRedirect();
+
         const timeout = setTimeout(() => {
             if (loading) {
                 console.warn("Auth check timed out. Forcing loading to false.");
@@ -75,7 +91,15 @@ export function AuthProvider({ children }) {
 
     const login = () => {
         const provider = new GoogleAuthProvider();
-        return signInWithPopup(auth, provider);
+
+        // Use redirect for mobile devices, popup for desktop
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        if (isMobile) {
+            return signInWithRedirect(auth, provider);
+        } else {
+            return signInWithPopup(auth, provider);
+        }
     };
 
     const loginWithEmail = (email, password) => {
