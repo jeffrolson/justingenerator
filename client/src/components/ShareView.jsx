@@ -39,11 +39,12 @@ export function ShareView({ genId }) {
     const handleDownload = async () => {
         if (!data) return;
         try {
-            const res = await fetch(`${apiUrl}/api/public/image/${encodeURIComponent(data.resultPath)}`);
+            const url = getImageUrl(data.imageUrl, apiUrl);
+            const res = await fetch(url);
             const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
+            const downloadUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url;
+            a.href = downloadUrl;
             a.download = `generation-${genId}.png`;
             document.body.appendChild(a);
             a.click();
@@ -100,7 +101,7 @@ export function ShareView({ genId }) {
                     {/* Main Image Container */}
                     <div className="relative aspect-[3/4] bg-slate-900 overflow-hidden">
                         <img
-                            src={getImageUrl(`/api/public/image/${encodeURIComponent(data.resultPath)}`, apiUrl)}
+                            src={getImageUrl(data.imageUrl, apiUrl)}
                             alt={data.summary}
                             className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                         />

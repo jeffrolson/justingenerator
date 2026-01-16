@@ -1514,6 +1514,23 @@ app.get('/api/public/share/:id', async (c) => {
   const id = c.req.param('id')
   const firebase = new Firebase(c.env)
 
+  // Handle seed images (presets)
+  if (id.startsWith('seed-')) {
+    const presetId = id.replace('seed-', '')
+    const preset = PRESETS.find(p => p.id === presetId)
+    if (preset) {
+      return c.json({
+        status: 'success',
+        generation: {
+          id,
+          summary: preset.title,
+          imageUrl: preset.sampleUrl,
+          isSeed: true
+        }
+      })
+    }
+  }
+
   const gen: any = await firebase.firestore('GET', `generations/${id}`)
   if (!gen || !gen.fields?.isPublic?.booleanValue) {
     return c.json({ error: 'Generation not found or not public' }, 404)
