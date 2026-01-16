@@ -949,10 +949,10 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                                 </div>
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handleShare(item); }}
-                                                    className="p-2.5 bg-violet-600/10 hover:bg-violet-600/20 text-violet-400 rounded-full border border-violet-500/20 transition-all hover:scale-110 active:scale-95 shadow-lg shadow-violet-500/5"
+                                                    className="p-2.5 bg-violet-600/10 hover:bg-violet-600/20 text-violet-400 rounded-full border border-violet-500/20 transition-all hover:scale-110 active:scale-95 shadow-lg shadow-violet-500/5 group/share"
                                                     title="Share Masterpiece"
                                                 >
-                                                    <Share2 className="w-4 h-4" />
+                                                    <Share2 className="w-4 h-4 transition-transform group-hover/share:rotate-12" />
                                                 </button>
                                             </div>
                                         </div>

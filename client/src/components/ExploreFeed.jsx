@@ -134,8 +134,8 @@ export function ExploreFeed({ onRemix }) {
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                         />
 
-                        {/* Hover Overlay - Visible on hover, and partially visible on mobile */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-0 group-hover:opacity-100 md:group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6 cursor-pointer"
+                        {/* Overlay - Visible on mobile by default, hover on desktop */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6 cursor-pointer"
                             onClick={() => handleAction('remix', item)}
                         >
                             <div className="flex items-center justify-between mb-4">
