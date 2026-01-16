@@ -89,7 +89,11 @@ export function UserManager() {
                                     User {sortField === 'name' && (sortOrder === 'ASC' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
                                 </div>
                             </th>
-                            <th className="p-4">Role</th>
+                            <th className="p-4 cursor-pointer hover:text-white transition-colors" onClick={() => toggleSort('role')}>
+                                <div className="flex items-center gap-2">
+                                    Role {sortField === 'role' && (sortOrder === 'ASC' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
+                                </div>
+                            </th>
                             <th className="p-4 cursor-pointer hover:text-white transition-colors" onClick={() => toggleSort('credits')}>
                                 <div className="flex items-center gap-2">
                                     Credits {sortField === 'credits' && (sortOrder === 'ASC' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
@@ -131,10 +135,18 @@ export function UserManager() {
                                         </span>
                                     </td>
                                     <td className="p-4 font-mono">{user.credits}</td>
-                                    <td className="p-4 font-mono text-center">{user.generationsCount || 0}</td>
+                                    <td
+                                        className="p-4 font-mono text-center cursor-pointer hover:text-violet-400 underline underline-offset-4 decoration-white/10"
+                                        onClick={() => {
+                                            setSelectedUser(user);
+                                            fetchUserGenerations(user.id);
+                                        }}
+                                    >
+                                        {user.generationsCount || 0}
+                                    </td>
                                     <td className="p-4 font-mono text-green-400">${(user.totalSpent || 0).toFixed(2)}</td>
-                                    <td className="p-4 text-sm text-gray-400">
-                                        {new Date(user.createdAt).toLocaleDateString()}
+                                    <td className="p-4 text-xs text-gray-400">
+                                        {new Date(user.createdAt).toLocaleString()}
                                     </td>
                                     <td className="p-4 text-right">
                                         <div className="flex items-center justify-end gap-2">

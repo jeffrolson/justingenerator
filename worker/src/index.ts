@@ -928,28 +928,31 @@ app.get('/api/admin/users', async (c) => {
   const sortField = c.req.query('sortField') || 'createdAt'
   const sortOrder = c.req.query('sortOrder') || 'DESC'
 
-  // Simple limit for now
   try {
-    const results = await firebase.firestore('GET', 'users?pageSize=100') as any
-    const users = results.documents?.map((doc: any) => {
-      const f = doc.fields
-      return {
-        id: doc.name.split('/').pop(),
-        email: f.email?.stringValue,
-        name: f.name?.stringValue,
-        role: f.role?.stringValue || 'user',
-        credits: parseInt(f.credits?.integerValue || '0'),
-        generationsCount: parseInt(f.generationsCount?.integerValue || '0'),
-        totalSpent: parseFloat(f.totalSpent?.doubleValue || '0'),
-        createdAt: f.createdAt?.timestampValue
-      }
-    }) || []
+    // 1. Fetch latest 500 users using structured query to ensure newest are always seen
+    const users = await firebase.query('users', {
+      orderBy: [{
+        field: { fieldPath: 'createdAt' },
+        direction: 'DESCENDING'
+      }],
+      limit: 500
+    }) as any[]
 
-    // 1. Filter out anonymous and "undefined undefined" users
-    // Also filter based on search query if provided
-    let filtered = users.filter((u: any) => {
-      const isAnonymous = !u.name || u.name === 'Anonymous' || u.name === 'undefined undefined';
-      if (isAnonymous) return false;
+    const mappedUsers = users.map(u => ({
+      id: u.id,
+      email: u.email?.stringValue,
+      name: u.name?.stringValue,
+      role: u.role?.stringValue || 'user',
+      credits: parseInt(u.credits?.integerValue || '0'),
+      generationsCount: parseInt(u.generationsCount?.integerValue || '0'),
+      totalSpent: parseFloat(u.totalSpent?.doubleValue || '0'),
+      createdAt: u.createdAt?.timestampValue
+    }))
+
+    // 2. Filter based on search query if provided
+    // Relaxed anonymous filter - admin should see all users with an email
+    let filtered = mappedUsers.filter((u: any) => {
+      if (!u.email) return false; // Filter out true trash without email
 
       if (search) {
         const s = search.toLowerCase();
@@ -958,7 +961,7 @@ app.get('/api/admin/users', async (c) => {
       return true;
     });
 
-    // 2. Sort in-memory
+    // 3. Sort in-memory (the frontend handles this by passing field/order)
     filtered.sort((a: any, b: any) => {
       let valA = a[sortField];
       let valB = b[sortField];
@@ -967,6 +970,10 @@ app.get('/api/admin/users', async (c) => {
       if (typeof valA === 'string') valA = valA.toLowerCase();
       if (typeof valB === 'string') valB = valB.toLowerCase();
 
+      // Handle nulls
+      if (valA === undefined || valA === null) return 1;
+      if (valB === undefined || valB === null) return -1;
+
       if (valA < valB) return sortOrder === 'ASC' ? -1 : 1;
       if (valA > valB) return sortOrder === 'ASC' ? 1 : -1;
       return 0;
@@ -974,6 +981,7 @@ app.get('/api/admin/users', async (c) => {
 
     return c.json({ status: 'success', users: filtered })
   } catch (e: any) {
+    console.error("User List Error", e)
     return c.json({ error: e.message }, 500)
   }
 })
