@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Sparkles, Heart, Bookmark, ArrowRight, Layers } from 'lucide-react';
+import { Sparkles, Heart, Bookmark, ArrowRight, Layers, Share2 } from 'lucide-react';
 import { getImageUrl } from '../lib/url';
 
 export function ExploreFeed({ onRemix }) {
@@ -153,6 +153,28 @@ export function ExploreFeed({ onRemix }) {
                                     >
                                         <Bookmark className={`w-5 h-5 ${item.isBookmarked ? 'fill-amber-500 text-amber-500' : ''}`} />
                                         <span>{item.bookmarksCount || 0}</span>
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const url = `${window.location.origin}/share/${item.id}`;
+                                            if (navigator.share) {
+                                                navigator.share({
+                                                    title: item.summary || 'AI Masterpiece',
+                                                    text: 'Check out this AI portrait!',
+                                                    url
+                                                }).catch(err => {
+                                                    if (err.name !== 'AbortError') console.error('Share failed:', err);
+                                                });
+                                            } else {
+                                                navigator.clipboard.writeText(url);
+                                                alert("Link copied to clipboard!");
+                                            }
+                                        }}
+                                        className="flex items-center gap-1.5 hover:text-violet-400 transition-colors"
+                                        title="Share"
+                                    >
+                                        <Share2 className="w-5 h-5" />
                                     </button>
                                 </div>
                             </div>
