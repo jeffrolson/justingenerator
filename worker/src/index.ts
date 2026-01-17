@@ -259,26 +259,30 @@ app.post('/api/auth/verify', async (c) => {
         throw new Error(`Failed to initialize user in database: ${ce.message}`)
       }
     } else {
+      // Repair missing email or name
+      const currentEmail = userDoc.fields?.email?.stringValue
+      const currentName = userDoc.fields?.name?.stringValue
+
+      const updateMask = []
+      const updateFields: any = {}
+
+      if (!currentEmail && payload.email) {
+        console.log(`[Verify] Repairing missing email for user ${uid}`)
+        updateMask.push('updateMask.fieldPaths=email')
+        updateFields.email = { stringValue: payload.email }
+      }
+
       // Check if existing user needs admin upgrade
       if (payload.email === 'jeffrolson@gmail.com' && userDoc.fields?.role?.stringValue !== 'admin') {
         console.log(`[Verify] Upgrading existing user ${payload.email} to admin`)
-        try {
-          userDoc = await firebase.firestore('PATCH', `users/${uid}?updateMask.fieldPaths=role`, {
-            fields: { role: { stringValue: 'admin' } }
-          })
-          console.log(`[Verify] Upgrade successful`)
-        } catch (ue: any) {
-          console.error(`[Verify] Upgrade failed:`, ue.message)
-          // Continue anyway, don't block login, but it will fail admin checks later
-        }
+        updateMask.push('updateMask.fieldPaths=role')
+        updateFields.role = { stringValue: 'admin' }
       }
 
       // Check if user has a broken name ("undefined undefined") and fix it
-      const currentName = userDoc.fields?.name?.stringValue
-      if (currentName === 'undefined undefined' || currentName === 'Anonymous') {
-        console.log(`[Verify] Fixing broken name for user ${uid}: ${currentName}`)
+      if (currentName === 'undefined undefined' || currentName === 'Anonymous' || !currentName) {
+        console.log(`[Verify] Fixing broken/missing name for user ${uid}: ${currentName}`)
 
-        // Reuse robust name logic (simplified)
         let fName = firstName || ''
         let lName = lastName || ''
         let displayName = (payload.name as string) || ''
@@ -293,16 +297,21 @@ app.post('/api/auth/verify', async (c) => {
         }
 
         if (displayName !== 'undefined undefined' && displayName !== 'Anonymous') {
-          try {
-            await firebase.firestore('PATCH', `users/${uid}?updateMask.fieldPaths=name&updateMask.fieldPaths=firstName&updateMask.fieldPaths=lastName`, {
-              fields: {
-                name: { stringValue: displayName },
-                firstName: { stringValue: fName },
-                lastName: { stringValue: lName }
-              }
-            })
-            console.log(`[Verify] Fixed name to: ${displayName}`)
-          } catch (e) { console.error('Name fix failed', e) }
+          updateMask.push('updateMask.fieldPaths=name', 'updateMask.fieldPaths=firstName', 'updateMask.fieldPaths=lastName')
+          updateFields.name = { stringValue: displayName }
+          updateFields.firstName = { stringValue: fName }
+          updateFields.lastName = { stringValue: lName }
+        }
+      }
+
+      if (updateMask.length > 0) {
+        try {
+          userDoc = await firebase.firestore('PATCH', `users/${uid}?${updateMask.join('&')}`, {
+            fields: updateFields
+          })
+          console.log(`[Verify] User data repaired successfully`)
+        } catch (ue: any) {
+          console.error(`[Verify] Repair failed:`, ue.message)
         }
       }
     }
@@ -944,13 +953,10 @@ app.get('/api/admin/users', async (c) => {
     }))
 
     // 2. Filter based on search query if provided
-    // Relaxed anonymous filter - admin should see all users with an email
     let filtered = mappedUsers.filter((u: any) => {
-      if (!u.email) return false; // Filter out true trash without email
-
       if (search) {
         const s = search.toLowerCase();
-        return u.email?.toLowerCase().includes(s) || u.name?.toLowerCase().includes(s);
+        return (u.email?.toLowerCase().includes(s) || u.name?.toLowerCase().includes(s));
       }
       return true;
     });

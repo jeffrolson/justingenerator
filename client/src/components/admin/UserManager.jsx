@@ -98,16 +98,39 @@ export function UserManager() {
     return (
         <div className="max-w-[1600px] mx-auto text-white">
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">User Management</h2>
-                <div className="relative">
-                    <Search className="absolute left-3 top-2.5 text-gray-500" size={18} />
-                    <input
-                        type="text"
-                        placeholder="Search users..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2 w-64 focus:outline-none focus:border-violet-500 transition-colors"
-                    />
+                <div className="flex flex-col md:flex-row gap-4 items-center justify-between w-full">
+                    <h2 className="text-2xl font-bold hidden md:block">User Management</h2>
+                    <div className="relative flex-1 w-full">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
+                        <input
+                            type="search"
+                            placeholder="Search by name or email..."
+                            className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex gap-2 w-full md:w-auto">
+                        <button
+                            onClick={fetchUsers}
+                            className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                            title="Refresh List"
+                        >
+                            <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
+                        </button>
+                        <select
+                            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all cursor-pointer"
+                            value={sortField}
+                            onChange={(e) => setSortField(e.target.value)}
+                        >
+                            <option value="createdAt">Newest Joined</option>
+                            <option value="name">Name</option>
+                            <option value="email">Email</option>
+                            <option value="credits">Credits</option>
+                            <option value="generationsCount">Generations</option>
+                            <option value="totalSpent">Total Spent</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -150,9 +173,9 @@ export function UserManager() {
                     </thead>
                     <tbody className="divide-y divide-white/5">
                         {loading ? (
-                            <tr><td colSpan={5} className="p-8 text-center text-gray-500">Loading...</td></tr>
+                            <tr><td colSpan={7} className="p-8 text-center text-gray-500">Loading...</td></tr>
                         ) : users.length === 0 ? (
-                            <tr><td colSpan={5} className="p-8 text-center text-gray-500">No users found</td></tr>
+                            <tr><td colSpan={7} className="p-8 text-center text-gray-500">No users found</td></tr>
                         ) : (
                             users.map(user => (
                                 <tr key={user.id} className="hover:bg-white/5 transition-colors">
