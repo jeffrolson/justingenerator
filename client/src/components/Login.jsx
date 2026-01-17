@@ -32,14 +32,12 @@ export function Login() {
             setLoading(false);
         }
     };
-    const handleGoogleLogin = async () => {
-        try {
-            setError('');
-            await login();
-        } catch (err) {
+    const handleGoogleLogin = () => {
+        setError('');
+        login().catch((err) => {
             console.error("Google Login Error:", err);
             setError(err.message || 'Failed to sign in with Google');
-        }
+        });
     };
 
     return (

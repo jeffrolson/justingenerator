@@ -24,16 +24,7 @@ export function AuthProvider({ children }) {
     const [backendUser, setBackendUser] = useState(null);
 
     useEffect(() => {
-        const timeout = setTimeout(() => {
-            if (loading) {
-                console.warn("Auth check timed out. Forcing loading to false.");
-                setLoading(false);
-            }
-        }, 10000);
-
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            clearTimeout(timeout);
-            console.log("onAuthStateChanged fired. User:", firebaseUser?.email || "null");
             setUser(firebaseUser);
 
             if (firebaseUser) {
@@ -55,24 +46,20 @@ export function AuthProvider({ children }) {
                         setBackendUser(data.user);
                     }
                 } catch (error) {
-                    console.error("[AuthContext] Error during backend sync:", error.message);
+                    console.error("Backend sync error:", error);
                 }
             } else {
                 setBackendUser(null);
             }
-
             setLoading(false);
         });
 
-        return () => {
-            unsubscribe();
-            clearTimeout(timeout);
-        };
+        return () => unsubscribe();
     }, []);
 
     const login = () => {
         const provider = new GoogleAuthProvider();
-        console.log("[AuthContext] Initiating Google Login with Popup...");
+        // Return the promise directly to ensure the browser sees a direct user interaction
         return signInWithPopup(auth, provider);
     };
 
