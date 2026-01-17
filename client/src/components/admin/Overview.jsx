@@ -4,19 +4,24 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { TrendingUp, Users, DollarSign, Activity, AlertCircle, Zap, Wallet, Calendar, ExternalLink, Cloud, Globe } from 'lucide-react';
 
 const KPICard = ({ title, value, trend, icon: Icon, color, label }) => (
-    <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm hover:bg-white/10 transition-colors">
-        <div className="flex justify-between items-start mb-4">
-            <div className={`p-3 rounded-lg ${color} bg-opacity-20`}>
-                <Icon size={24} className={color.replace('bg-', 'text-')} />
+    <div className="bg-white/5 border border-white/10 rounded-lg p-4 backdrop-blur-sm hover:bg-white/10 transition-colors">
+        <div className="flex justify-between items-start mb-2">
+            <div className={`p-1.5 rounded bg-opacity-20 ${color}`}>
+                <Icon size={16} className={color.replace('bg-', 'text-')} />
             </div>
             {trend !== undefined && trend !== 0 && (
-                <span className={`text-sm font-medium ${trend > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {trend > 0 ? '+' : ''}{trend}%
+                <span className={`text-[11px] font-semibold ${trend > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {trend > 0 ? '↑' : '↓'}{Math.abs(trend)}%
                 </span>
             )}
         </div>
-        <div className="text-3xl font-bold text-white mb-1">{value}</div>
-        <div className="text-sm text-gray-400">{label || title}</div>
+        <div className="text-xl font-bold text-white leading-tight">{value}</div>
+        <div className="text-[10px] text-gray-500 uppercase tracking-tighter mt-1 truncate" title={label || title}>
+            {title}
+        </div>
+        {label && label !== title && (
+            <div className="text-[9px] text-gray-600 mt-0.5 truncate">{label}</div>
+        )}
     </div>
 );
 
@@ -126,52 +131,31 @@ export function Overview() {
                 </div>
             </div>
 
-            {/* External Tools */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <a href="https://analytics.google.com/" target="_blank" rel="noopener noreferrer" className="relative z-10 group flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all hover:border-orange-500/30 cursor-pointer">
-                    <div className="p-3 bg-orange-500/20 rounded-lg text-orange-500 group-hover:scale-110 transition-transform">
-                        <TrendingUp size={24} />
-                    </div>
-                    <div>
-                        <div className="font-bold text-white flex items-center gap-2">
-                            Google Analytics
-                            <ExternalLink size={14} className="text-gray-500" />
-                        </div>
-                        <div className="text-sm text-gray-400">Traffic & User Behavior</div>
-                    </div>
-                </a>
-
-                <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="relative z-10 group flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all hover:border-blue-500/30 cursor-pointer">
-                    <div className="p-3 bg-blue-500/20 rounded-lg text-blue-500 group-hover:scale-110 transition-transform">
-                        <Cloud size={24} />
-                    </div>
-                    <div>
-                        <div className="font-bold text-white flex items-center gap-2">
-                            Google Cloud
-                            <ExternalLink size={14} className="text-gray-500" />
-                        </div>
-                        <div className="text-sm text-gray-400">Infrastructure & Logs</div>
-                    </div>
-                </a>
-
-                <a href="https://dash.cloudflare.com/" target="_blank" rel="noopener noreferrer" className="relative z-10 group flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all hover:border-orange-500/30 cursor-pointer">
-                    <div className="p-3 bg-orange-500/20 rounded-lg text-orange-500 group-hover:scale-110 transition-transform">
-                        <Globe size={24} />
-                    </div>
-                    <div>
-                        <div className="font-bold text-white flex items-center gap-2">
-                            Cloudflare
-                            <ExternalLink size={14} className="text-gray-500" />
-                        </div>
-                        <div className="text-sm text-gray-400">CDN & Edge Workers</div>
-                    </div>
-                </a>
+            {/* External Tools - Compact */}
+            <div className="flex flex-wrap gap-2">
+                {[
+                    { label: 'Analytics', href: 'https://analytics.google.com/', icon: TrendingUp, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+                    { label: 'GCP Console', href: 'https://console.cloud.google.com/', icon: Cloud, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+                    { label: 'Cloudflare', href: 'https://dash.cloudflare.com/', icon: Globe, color: 'text-orange-400', bg: 'bg-orange-400/10' }
+                ].map(tool => (
+                    <a
+                        key={tool.label}
+                        href={tool.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-1.5 rounded bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
+                    >
+                        <tool.icon size={14} className={tool.color} />
+                        <span className="text-xs font-medium text-gray-300 group-hover:text-white">{tool.label}</span>
+                        <ExternalLink size={10} className="text-gray-600" />
+                    </a>
+                ))}
             </div>
 
-            {/* KPI Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* KPI Grid - High Density */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                 <KPICard
-                    title="Avg Daily Users"
+                    title="Active Users"
                     value={kpis.activeUsers.value}
                     trend={kpis.activeUsers.trend}
                     icon={Users}
@@ -179,12 +163,12 @@ export function Overview() {
                     label={kpis.activeUsers.label}
                 />
                 <KPICard
-                    title="Revenue"
+                    title="Revenue (Range)"
                     value={`$${kpis.revenue.value}`}
                     trend={kpis.revenue.trend}
                     icon={DollarSign}
                     color="bg-green-500"
-                    label={`${kpis.revenue.label} (All Time: $${kpis.allTime.revenue})`}
+                    label={`All Time: $${kpis.allTime.revenue}`}
                 />
                 <KPICard
                     title="New Signups"
@@ -200,15 +184,15 @@ export function Overview() {
                     trend={kpis.tokens.trend}
                     icon={Zap}
                     color="bg-amber-500"
-                    label={`${kpis.tokens.label} (All Time: ${kpis.allTime.tokens})`}
+                    label={`All Time: ${kpis.allTime.tokens}`}
                 />
                 <KPICard
-                    title="Est. Usage Cost"
+                    title="Usage Cost"
                     value={`$${kpis.cost.value}`}
                     trend={kpis.cost.trend}
                     icon={Wallet}
                     color="bg-red-500"
-                    label={`${kpis.cost.label} (All Time: $${kpis.allTime.cost})`}
+                    label={`All Time: $${kpis.allTime.cost}`}
                 />
                 <KPICard
                     title="Net Profit"
@@ -270,25 +254,20 @@ export function Overview() {
                 </div>
             </div>
 
-            {/* AI Insights (Static for now, but placeholder for future) */}
-            <div className="bg-gradient-to-r from-violet-900/20 to-fuchsia-900/20 border border-white/10 rounded-xl p-6">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 bg-violet-500/20 rounded-lg text-violet-300">
-                        <Activity size={20} />
-                    </div>
-                    <div>
-                        <h4 className="font-semibold text-white">AI Insights</h4>
-                        <p className="text-sm text-gray-400">Automated observations from your data</p>
-                    </div>
+            {/* AI Insights - Compact */}
+            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                    <Activity size={16} className="text-violet-400" />
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">AI Observations</h4>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-white/5 rounded-lg p-4">
-                        <span className="text-green-400 font-bold text-sm block mb-1">Growth Opportunity</span>
-                        <p className="text-gray-300 text-sm">New user signups have increased by 15% this week. Consider running a retention campaign.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="bg-black/20 rounded p-2.5 border border-white/5">
+                        <span className="text-[10px] text-green-400 font-bold block mb-1">↑ Growth</span>
+                        <p className="text-gray-400 text-[11px] leading-snug">New user signups increased 15% this week.</p>
                     </div>
-                    <div className="bg-white/5 rounded-lg p-4">
-                        <span className="text-amber-400 font-bold text-sm block mb-1">Cost Alert</span>
-                        <p className="text-gray-300 text-sm">Token usage per generation is slightly up. Check if newer prompts are more complex.</p>
+                    <div className="bg-black/20 rounded p-2.5 border border-white/5">
+                        <span className="text-[10px] text-amber-400 font-bold block mb-1">! Cost</span>
+                        <p className="text-gray-400 text-[11px] leading-snug">Token usage per generation is slightly up.</p>
                     </div>
                 </div>
             </div>

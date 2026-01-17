@@ -13,10 +13,38 @@ export function Settings() {
     const [message, setMessage] = useState({ type: '', text: '' });
 
     const availableModels = [
-        { id: 'gemini-2.5-flash-image', name: 'Gemini 2.5 Flash Image', description: 'Fastest, optimized for image generation. Recommended default.' },
-        { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash Exp', description: 'Experimental faster model with newer architecture.' },
-        { id: 'gemini-exp-1206', name: 'Gemini Exp 1206', description: 'New experimental model (Dec 2024).' },
-        { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Highest quality, more reasoning, but slower.' },
+        {
+            id: 'gemini-3-pro-image-preview',
+            name: 'Nano Banana Pro',
+            badge: 'Gemini 3 Pro Image',
+            description: 'State-of-the-art image generation and editing model.',
+            pricing: 'In: $2.00 / Out: $0.134 (per image)',
+            cutoff: 'Jan 2025'
+        },
+        {
+            id: 'gemini-2.5-flash-image',
+            name: 'Nano Banana',
+            badge: 'Gemini 2.5 Flash Image',
+            description: 'Fastest, optimized for image generation. Recommended default.',
+            pricing: 'In: $0.30 / Out: $0.039 (per image)',
+            cutoff: 'Jan 2025'
+        },
+        {
+            id: 'gemini-3-pro-preview',
+            name: 'Gemini 3 Pro Preview',
+            badge: 'Pure Text/Reasoning',
+            description: 'Most intelligent model with SOTA reasoning and multimodal understanding.',
+            pricing: 'In: $2.00 / Out: $12.00',
+            cutoff: 'Jan 2025'
+        },
+        {
+            id: 'gemini-3-flash-preview',
+            name: 'Gemini 3 Flash Preview',
+            badge: 'Speed/Grounding',
+            description: 'Built for speed, combining frontier intelligence with superior search.',
+            pricing: 'In: $0.50 / Out: $3.00',
+            cutoff: 'Jan 2025'
+        }
     ];
 
     useEffect(() => {
@@ -82,32 +110,55 @@ export function Settings() {
                     </div>
                 </div>
 
-                <div className="space-y-4">
-                    {availableModels.map((model) => (
-                        <label
-                            key={model.id}
-                            className={`flex items-start gap-4 p-4 rounded-xl border transition-all cursor-pointer ${settings.imageModel === model.id
-                                ? 'bg-violet-600/10 border-violet-500/50 text-white'
-                                : 'bg-black/20 border-white/5 text-gray-400 hover:border-white/20'
-                                }`}
-                        >
-                            <input
-                                type="radio"
-                                name="imageModel"
-                                value={model.id}
-                                checked={settings.imageModel === model.id}
-                                onChange={(e) => setSettings({ ...settings, imageModel: e.target.value })}
-                                className="mt-1 accent-violet-500"
-                            />
-                            <div className="flex-1">
-                                <div className="font-semibold mb-1">{model.name}</div>
-                                <div className="text-xs text-gray-500">{model.description}</div>
-                            </div>
-                            {settings.imageModel === model.id && (
-                                <ShieldCheck size={18} className="text-violet-400" />
-                            )}
-                        </label>
-                    ))}
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="text-xs uppercase tracking-wider text-gray-500 border-b border-white/10">
+                                <th className="pb-3 pl-4 font-medium">Selection</th>
+                                <th className="pb-3 font-medium">Model Name</th>
+                                <th className="pb-3 font-medium text-center">Capabilities</th>
+                                <th className="pb-3 font-medium">Pricing Info</th>
+                                <th className="pb-3 font-medium text-right pr-4">Knowledge</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {availableModels.map((model) => (
+                                <tr
+                                    key={model.id}
+                                    onClick={() => setSettings({ ...settings, imageModel: model.id })}
+                                    className={`group cursor-pointer transition-colors ${settings.imageModel === model.id ? 'bg-violet-500/10' : 'hover:bg-white/5'
+                                        }`}
+                                >
+                                    <td className="py-3 pl-4">
+                                        <input
+                                            type="radio"
+                                            name="imageModel"
+                                            value={model.id}
+                                            checked={settings.imageModel === model.id}
+                                            onChange={(e) => setSettings({ ...settings, imageModel: e.target.value })}
+                                            className="accent-violet-500 w-4 h-4"
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    </td>
+                                    <td className="py-3">
+                                        <div className="font-medium text-sm text-gray-200">{model.name}</div>
+                                        <div className="text-[10px] text-gray-500 truncate max-w-[200px]">{model.description}</div>
+                                    </td>
+                                    <td className="py-3 text-center">
+                                        <span className="inline-block px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-gray-400 border border-white/5">
+                                            {model.badge}
+                                        </span>
+                                    </td>
+                                    <td className="py-3">
+                                        <div className="text-[10px] font-mono text-gray-400">{model.pricing}</div>
+                                    </td>
+                                    <td className="py-3 text-right pr-4">
+                                        <div className="text-[10px] text-gray-500 italic">{model.cutoff}</div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
 
                 <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-6">
