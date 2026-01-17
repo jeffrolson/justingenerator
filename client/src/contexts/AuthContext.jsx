@@ -27,13 +27,9 @@ export function AuthProvider({ children }) {
         // Handle redirect result for mobile logins
         const handleRedirect = async () => {
             try {
-                console.log("[AuthContext] Checking for redirect result...");
                 const result = await getRedirectResult(auth);
                 if (result) {
                     console.log("[AuthContext] Redirect login success:", result.user.email);
-                    console.log("[AuthContext] Full result object:", result);
-                } else {
-                    console.log("[AuthContext] No redirect result found.");
                 }
             } catch (error) {
                 console.error("[AuthContext] Error getting redirect result:", error);
