@@ -836,12 +836,14 @@ app.get('/api/admin/kpis', async (c) => {
     const docMap = new Map(allTimeDocs.map((d: any) => [d.date.stringValue, d]))
     docs = dates.map(date => docMap.get(date) || null)
 
-    // Auto-aggregate today if missing
+    // Always re-aggregate today's stats for live accuracy
     const todayStr = new Date().toISOString().split('T')[0]
     const todayIdx = dates.indexOf(todayStr)
-    if (todayIdx !== -1 && !docs[todayIdx]) {
+
+    // If today is in the requested range, re-calculate it live
+    if (todayIdx !== -1) {
       try {
-        console.log(`[KPIs] Today's stats (${todayStr}) missing. Aggregating...`)
+        // console.log(`[KPIs] Refreshing today's stats (${todayStr}) for live view`)
         const todayStats = await analytics.aggregateDailyStats(todayStr)
         docs[todayIdx] = {
           date: { stringValue: todayStr },

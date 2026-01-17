@@ -300,7 +300,6 @@ export class Analytics {
                         compositeFilter: {
                             op: 'AND',
                             filters: [
-                                { fieldFilter: { field: { fieldPath: 'eventType' }, op: 'EQUAL', value: { stringValue: 'payment_success' } } },
                                 { fieldFilter: { field: { fieldPath: 'timestamp' }, op: 'GREATER_THAN_OR_EQUAL', value: { timestampValue: startTS } } },
                                 { fieldFilter: { field: { fieldPath: 'timestamp' }, op: 'LESS_THAN_OR_EQUAL', value: { timestampValue: endTS } } }
                             ]
