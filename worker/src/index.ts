@@ -361,6 +361,7 @@ app.post('/api/generate', async (c) => {
   const firebase = c.get('firebase')
   const analytics = c.get('analytics')
   let usageStats = { total: 0, prompt: 0, candidates: 0 };
+  let imageModel = 'gemini-2.5-flash-image'
 
   // 1. Check/Reset Credits & Subscription
   const userDoc: any = await firebase.firestore('GET', `users/${user.sub}`)
@@ -495,7 +496,6 @@ app.post('/api/generate', async (c) => {
     }
 
     // Fetch model from settings
-    let imageModel = 'gemini-2.5-flash-image'
     try {
       const settingsDoc: any = await firebase.firestore('GET', 'settings/config')
       if (settingsDoc?.fields?.imageModel?.stringValue) {
@@ -644,7 +644,9 @@ app.post('/api/generate', async (c) => {
       bookmarksCount: { integerValue: 0 },
       isPublic: { booleanValue: false },
       remixFrom: remixFrom ? { stringValue: remixFrom } : { nullValue: null },
-      storedPromptId: storedPromptId ? { stringValue: storedPromptId } : { nullValue: null }
+      storedPromptId: storedPromptId ? { stringValue: storedPromptId } : { nullValue: null },
+      model: { stringValue: imageModel },
+      tokens: { integerValue: usageStats.total || 0 }
     }
   })
 
@@ -690,7 +692,8 @@ app.post('/api/generate', async (c) => {
       tags,
       processingTime: Date.now() - start,
       success: true,
-      tokens: usageStats.total || 0
+      tokens: usageStats.total || 0,
+      model: imageModel
     }
   ))
 
@@ -1180,6 +1183,12 @@ app.get('/api/admin/analytics/users/:id', async (c) => {
         preset: gens.filter(g => g.storedPromptId?.stringValue && !g.remixFrom?.stringValue).length,
         custom: gens.filter(g => !g.storedPromptId?.stringValue && !g.remixFrom?.stringValue).length
       },
+      totalTokens: gens.reduce((sum, g) => sum + parseInt(g.tokens?.integerValue || '0'), 0),
+      models: gens.reduce((acc: Record<string, number>, g) => {
+        const m = g.model?.stringValue || 'gemini-2.5-flash-image'
+        acc[m] = (acc[m] || 0) + 1
+        return acc
+      }, {}),
       lastActive: gens.length > 0 ? gens[0].createdAt?.timestampValue : (logins.length > 0 ? logins[0].timestamp?.timestampValue : null)
     }
 
@@ -1229,17 +1238,26 @@ app.get('/api/admin/analytics/popularity', async (c) => {
       .slice(0, 10)
       .map(([id, count]) => ({ id, count }))
 
-    // Format top users
-    const topUsers = Object.entries(userCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([id, count]) => ({ id, count }))
+    // Format top users with emails
+    const powerUsers = await Promise.all(
+      Object.entries(userCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(async ([id, count]) => {
+          try {
+            const userDoc: any = await firebase.firestore('GET', `users/${id}`)
+            return { id, count, email: userDoc?.fields?.email?.stringValue || 'Unknown' }
+          } catch (e) {
+            return { id, count, email: 'Unknown' }
+          }
+        })
+    )
 
     return c.json({
       status: 'success',
       generationTypes: typeStats,
       topPresets,
-      powerUsers: topUsers
+      powerUsers
     })
   } catch (e: any) {
     console.error("Popularity Analytics Error", e)

@@ -175,7 +175,10 @@ export function Analytics() {
                             {data.powerUsers.map((user, idx) => (
                                 <tr key={user.id} className="group hover:bg-white/5 transition-colors">
                                     <td className="py-4 px-2">
-                                        <code className="text-xs text-violet-400">{user.id}</code>
+                                        <div className="flex flex-col">
+                                            <span className="text-white font-medium">{user.email}</span>
+                                            <code className="text-[10px] text-gray-500">{user.id}</code>
+                                        </div>
                                     </td>
                                     <td className="py-4 px-2 text-right font-bold text-white">
                                         {user.count}
@@ -185,7 +188,7 @@ export function Analytics() {
                                             <div className="w-16 h-1.5 bg-gray-800 rounded-full overflow-hidden">
                                                 <div
                                                     className="h-full bg-violet-500"
-                                                    style={{ width: `${(user.count / data.generationTypes.remix + data.generationTypes.preset + data.generationTypes.custom) * 100}%` }}
+                                                    style={{ width: `${(user.count / (data.generationTypes.remix + data.generationTypes.preset + data.generationTypes.custom)) * 100}%` }}
                                                 />
                                             </div>
                                             <span className="text-xs text-gray-500">

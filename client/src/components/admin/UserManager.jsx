@@ -380,6 +380,153 @@ export function UserManager() {
                     </div>
                 </div>
             )}
+            {/* User Insights Modal */}
+            {insightUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                    <div className="bg-[#0f0f0f] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-white/10 flex justify-between items-center bg-gradient-to-r from-violet-600/10 to-transparent">
+                            <div>
+                                <h3 className="text-xl font-bold">{insightUser.name || 'User'} Insights</h3>
+                                <p className="text-sm text-gray-500">{insightUser.email}</p>
+                            </div>
+                            <button onClick={() => { setInsightUser(null); setUserStats(null); }} className="p-2 hover:bg-white/10 rounded-xl transition-colors text-gray-400 hover:text-white">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto">
+                            {loadingStats ? (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <div className="w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                                    <p className="text-gray-400">Loading analytic data...</p>
+                                </div>
+                            ) : userStats ? (
+                                <div className="space-y-6">
+                                    {/* Stats Grid */}
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                        <div className="bg-white/5 p-4 rounded-xl border border-white/5 group">
+                                            <div className="flex items-center gap-2 text-violet-400 mb-1">
+                                                <LogIn size={14} />
+                                                <span className="text-[10px] uppercase font-bold tracking-widest">Logins</span>
+                                            </div>
+                                            <div className="text-2xl font-bold">{userStats.totalLogins}</div>
+                                        </div>
+                                        <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                            <div className="flex items-center gap-2 text-fuchsia-400 mb-1">
+                                                <ImageIcon size={14} />
+                                                <span className="text-[10px] uppercase font-bold tracking-widest">Generations</span>
+                                            </div>
+                                            <div className="text-2xl font-bold">{userStats.totalGenerations}</div>
+                                        </div>
+                                        <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                            <div className="flex items-center gap-2 text-emerald-400 mb-1">
+                                                <History size={14} />
+                                                <span className="text-[10px] uppercase font-bold tracking-widest">Active For</span>
+                                            </div>
+                                            <div className="text-xs font-bold leading-tight truncate">
+                                                {userStats.lastActive ? new Date(userStats.lastActive).toLocaleDateString() : 'Never'}
+                                            </div>
+                                            <div className="text-[8px] text-gray-500 uppercase mt-0.5">Last Activity</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Financials / Token Usage */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="bg-violet-500/5 p-4 rounded-xl border border-violet-500/10">
+                                            <div className="flex items-center gap-2 text-violet-400 mb-1">
+                                                <Sparkles size={14} />
+                                                <span className="text-[10px] uppercase font-bold tracking-widest">Lifetime Tokens</span>
+                                            </div>
+                                            <div className="text-xl font-bold">{(userStats.totalTokens || 0).toLocaleString()}</div>
+                                            <div className="text-[8px] text-gray-500 uppercase mt-0.5">Total generation cost base</div>
+                                        </div>
+                                        <div className="bg-emerald-500/5 p-4 rounded-xl border border-emerald-500/10">
+                                            <div className="flex items-center gap-2 text-emerald-400 mb-1">
+                                                <span className="font-bold text-sm">$</span>
+                                                <span className="text-[10px] uppercase font-bold tracking-widest">EST. Platform Cost</span>
+                                            </div>
+                                            <div className="text-xl font-bold text-emerald-300">
+                                                ${((userStats.totalTokens || 0) * 0.0000005).toFixed(4)}
+                                            </div>
+                                            <div className="text-[8px] text-gray-500 uppercase mt-0.5">Based on $0.50/1M tokens</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Breakdown Section */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-4">
+                                            <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Generation Mode</h4>
+                                            <div className="h-[140px]">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={[
+                                                        { name: 'Remix', value: userStats.types.remix },
+                                                        { name: 'Preset', value: userStats.types.preset },
+                                                        { name: 'Custom', value: userStats.types.custom }
+                                                    ]}>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                                                        <XAxis dataKey="name" stroke="#555" fontSize={10} />
+                                                        <YAxis stroke="#555" fontSize={10} hide />
+                                                        <RechartsTooltip
+                                                            contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
+                                                            itemStyle={{ color: '#fff' }}
+                                                        />
+                                                        <Bar dataKey="value" stroke="none">
+                                                            {[0, 1, 2].map((entry, index) => (
+                                                                <Cell key={`cell-${index}`} fill={['#8b5cf6', '#ec4899', '#f97316'][index]} />
+                                                            ))}
+                                                        </Bar>
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Model Distribution</h4>
+                                            <div className="h-[140px]">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={Object.entries(userStats.models || {}).map(([name, value]) => ({ name, value }))}
+                                                            cx="50%"
+                                                            cy="50%"
+                                                            innerRadius={30}
+                                                            outerRadius={50}
+                                                            paddingAngle={5}
+                                                            dataKey="value"
+                                                        >
+                                                            {Object.entries(userStats.models || {}).map((entry, index) => (
+                                                                <Cell key={`cell-${index}`} fill={['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b'][index % 4]} />
+                                                            ))}
+                                                        </Pie>
+                                                        <RechartsTooltip
+                                                            contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
+                                                        />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="text-center text-[10px] text-gray-600 italic">
+                                        Analytics data synced from Firebase Events & R2 Metadata.
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center py-12 text-gray-500">No data available for this user.</div>
+                            )}
+                        </div>
+
+                        <div className="p-4 border-t border-white/10 bg-black/20 text-right">
+                            <button
+                                onClick={() => { setInsightUser(null); setUserStats(null); }}
+                                className="px-6 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-sm font-medium transition-colors border border-white/5"
+                            >
+                                Close Insights
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
