@@ -36,11 +36,11 @@ export function AdminDashboard() {
     };
 
     return (
-        <div className="min-h-screen bg-[#0a0a0a] flex overflow-x-hidden">
+        <div className="min-h-screen bg-(--bg-primary) text-(--text-primary) flex overflow-x-hidden">
             {/* Mobile Overlay */}
             {isMobileMenuOpen && (
                 <div
-                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 md:hidden"
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
                     onClick={() => setIsMobileMenuOpen(false)}
                 />
             )}
@@ -49,26 +49,26 @@ export function AdminDashboard() {
             <aside className={`
                 ${isCollapsed ? 'w-20' : 'w-64'} 
                 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-                border-r border-white/10 bg-black/50 backdrop-blur-xl flex flex-col fixed h-full z-40 transition-all duration-300 ease-in-out
+                border-r border-(--glass-border) bg-(--bg-secondary)/50 backdrop-blur-xl flex flex-col fixed h-full z-50 transition-all duration-300 ease-in-out
             `}>
-                <div className={`p-4 border-b border-white/10 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+                <div className={`p-4 border-b border-(--glass-border) flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
                     <div className="flex items-center gap-3 overflow-hidden">
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 flex-shrink-0 flex items-center justify-center font-bold text-white">
                             A
                         </div>
-                        {!isCollapsed && <span className="font-bold text-lg text-white whitespace-nowrap">Admin Portal</span>}
+                        {!isCollapsed && <span className="font-bold text-lg text-(--text-primary) whitespace-nowrap">Admin Portal</span>}
                     </div>
                     {/* Desktop Collapse Toggle */}
                     <button
                         onClick={() => setIsCollapsed(!isCollapsed)}
-                        className="hidden md:flex p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                        className="hidden md:flex p-1.5 rounded-lg hover:bg-theme-glass-bg theme-text-secondary hover:text-theme-text-primary transition-colors"
                     >
                         {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
                     </button>
                     {/* Mobile Close Toggle */}
                     <button
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className="md:hidden p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                        className="md:hidden p-1.5 rounded-lg hover:bg-theme-glass-bg text-theme-text-secondary hover:text-theme-text-primary transition-colors"
                     >
                         <X size={20} />
                     </button>
@@ -85,13 +85,13 @@ export function AdminDashboard() {
                             title={isCollapsed ? item.label : ''}
                             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all relative group ${activeTab === item.id
                                 ? 'bg-violet-600/20 text-violet-300 border border-violet-500/30'
-                                : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                                : 'text-theme-text-secondary hover:bg-theme-glass-bg hover:text-theme-text-primary'
                                 }`}
                         >
                             <item.icon size={20} className="flex-shrink-0" />
                             {!isCollapsed && <span className="font-medium whitespace-nowrap">{item.label}</span>}
                             {isCollapsed && (
-                                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-nowrap border border-white/10">
+                                <div className="absolute left-full ml-2 px-2 py-1 bg-theme-bg-secondary text-theme-text-primary text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-nowrap border border-theme-glass-border">
                                     {item.label}
                                 </div>
                             )}
@@ -99,16 +99,16 @@ export function AdminDashboard() {
                     ))}
                 </nav>
 
-                <div className="p-2 border-t border-white/10 space-y-1">
+                <div className="p-2 border-t border-(--glass-border) space-y-1">
                     <button
                         onClick={() => window.location.href = '/'}
                         title={isCollapsed ? 'Back to App' : ''}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white transition-colors relative group"
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-theme-text-secondary hover:bg-theme-glass-bg hover:text-theme-text-primary transition-colors relative group"
                     >
                         <ArrowLeft size={20} className="flex-shrink-0" />
                         {!isCollapsed && <span className="font-medium whitespace-nowrap">Back to App</span>}
                         {isCollapsed && (
-                            <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-nowrap border border-white/10">
+                            <div className="absolute left-full ml-2 px-2 py-1 bg-theme-bg-secondary text-theme-text-primary text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-nowrap border border-theme-glass-border">
                                 Back to App
                             </div>
                         )}
@@ -131,23 +131,23 @@ export function AdminDashboard() {
 
             {/* Main Content */}
             <main className={`flex-1 min-h-screen transition-all duration-300 relative z-10 ${isCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
-                <header className="h-14 border-b border-white/10 bg-black/20 backdrop-blur-md sticky top-0 z-20 px-4 md:px-6 flex items-center justify-between">
+                <header className="h-14 border-b border-(--glass-border) bg-(--bg-primary)/20 backdrop-blur-md sticky top-0 z-20 px-4 md:px-6 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => setIsMobileMenuOpen(true)}
-                            className="md:hidden p-2 -ml-2 rounded-lg hover:bg-white/5 text-gray-400 transition-colors"
+                            className="md:hidden p-2 -ml-2 rounded-lg hover:bg-theme-glass-bg text-theme-text-secondary transition-colors"
                         >
                             <Menu size={20} />
                         </button>
-                        <h2 className="text-lg font-semibold text-white capitalize">{activeTab}</h2>
+                        <h2 className="text-lg font-semibold text-(--text-primary) capitalize">{activeTab}</h2>
                     </div>
 
                     <div className="flex items-center gap-4">
                         <div className="text-right hidden sm:block">
-                            <div className="text-sm font-medium text-white max-w-[150px] truncate">{user?.email}</div>
-                            <div className="text-[10px] text-gray-500 uppercase tracking-wider">{backendUser?.role?.stringValue || 'User'}</div>
+                            <div className="text-sm font-medium text-(--text-primary) max-w-[150px] truncate">{user?.email}</div>
+                            <div className="text-[10px] text-(--text-secondary) uppercase tracking-wider">{backendUser?.role?.stringValue || 'User'}</div>
                         </div>
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-500 to-orange-500 ring-2 ring-white/5"></div>
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-500 to-orange-500 ring-2 ring-(--glass-border)"></div>
                     </div>
                 </header>
 

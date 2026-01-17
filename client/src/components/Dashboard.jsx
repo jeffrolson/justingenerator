@@ -438,13 +438,13 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                     <div className="bg-violet-600 p-2 rounded-lg shadow-lg shadow-violet-500/30">
                         <Sparkles className="w-6 h-6 text-white" />
                     </div>
-                    <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">Justin Generator</h2>
+                    <h2 className="text-xl md:text-2xl font-bold text-(--text-primary) tracking-tight">Justin Generator</h2>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-center gap-3 md:gap-6">
                     <button
                         onClick={() => window.location.href = '/explore'}
-                        className="text-slate-400 hover:text-white transition-colors flex items-center gap-2 text-[10px] md:text-sm font-bold uppercase tracking-wider hover:scale-105"
+                        className="text-(--text-secondary) hover:text-(--text-primary) transition-colors flex items-center gap-2 text-[10px] md:text-sm font-bold uppercase tracking-wider hover:scale-105"
                     >
                         <ExternalLink className="w-4 h-4" />
                         <span className="hidden xs:inline">Public Gallery</span>
@@ -509,8 +509,8 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                     <Share2 className="w-5 h-5 text-fuchsia-400" />
                                 </div>
                                 <div>
-                                    <h4 className="text-white font-bold text-sm">Invite Friends</h4>
-                                    <p className="text-slate-400 text-xs text-nowrap">Get {referralCredits} credits for every referral</p>
+                                    <h4 className="text-(--text-primary) font-bold text-sm">Invite Friends</h4>
+                                    <p className="text-(--text-secondary) text-xs text-nowrap">Get {referralCredits} credits for every referral</p>
                                 </div>
                             </div>
                             <button
@@ -535,8 +535,8 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                         <div className="absolute top-0 right-0 w-64 h-64 bg-violet-600/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none group-hover:bg-violet-600/20 transition-all duration-700"></div>
 
                         <div>
-                            <h3 className="text-2xl font-bold text-white mb-2">Create Magic</h3>
-                            <p className="text-slate-400 text-sm">Upload a photo and let AI transform it into art.</p>
+                            <h3 className="text-2xl font-bold text-theme-text-primary mb-2">Create Magic</h3>
+                            <p className="text-theme-text-secondary text-sm">Upload a photo and let AI transform it into art.</p>
                         </div>
 
                         <div className="space-y-4">
@@ -597,13 +597,13 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                         </div>
 
                         <div className="space-y-4">
-                            <label className="text-sm font-medium text-violet-200 flex items-center gap-2">
+                            <label className="text-sm font-medium text-theme-text-primary flex items-center gap-2">
                                 Upload Your Photo
                                 {file && <Check className="w-4 h-4 text-emerald-400 animate-fade-in" />}
                             </label>
 
                             <div
-                                className={`border-2 border-dashed border-white/10 rounded-2xl p-8 text-center transition-all duration-300 relative overflow-hidden ${file ? 'bg-violet-500/10 border-violet-500/30' : 'hover:bg-white/5 hover:border-violet-500/30'} cursor-pointer h-[200px] flex items-center justify-center`}
+                                className={`border-2 border-dashed border-theme-glass-border rounded-2xl p-8 text-center transition-all duration-300 relative overflow-hidden ${file ? 'bg-violet-500/10 border-violet-500/30' : 'hover:bg-theme-glass-bg hover:border-violet-500/30'} cursor-pointer h-[200px] flex items-center justify-center`}
                             >
                                 <input
                                     type="file"
@@ -621,14 +621,14 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                     </div>
                                 ) : (
                                     <div className="space-y-4 pointer-events-none relative z-0 flex flex-col items-center justify-center">
-                                        <div className={`p-4 rounded-full bg-white/5 transition-transform duration-300 ${!file && 'group-hover:scale-110'}`}>
-                                            {file ? <ImageIcon className="w-8 h-8 text-violet-300" /> : <Upload className="w-8 h-8 text-slate-400" />}
+                                        <div className={`p-4 rounded-full bg-theme-bg-secondary/50 transition-transform duration-300 ${!file && 'group-hover:scale-110'}`}>
+                                            {file ? <ImageIcon className="w-8 h-8 text-violet-500" /> : <Upload className="w-8 h-8 text-theme-text-muted" />}
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-white font-medium text-lg">
+                                            <p className="text-theme-text-primary font-medium text-lg">
                                                 Upload Photo
                                             </p>
-                                            <p className="text-slate-400 text-sm">
+                                            <p className="text-theme-text-muted text-sm">
                                                 Drag & drop or click to browse
                                             </p>
                                         </div>

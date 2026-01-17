@@ -4,23 +4,23 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { TrendingUp, Users, DollarSign, Activity, AlertCircle, Zap, Wallet, Calendar, ExternalLink, Cloud, Globe } from 'lucide-react';
 
 const KPICard = ({ title, value, trend, icon: Icon, color, label }) => (
-    <div className="bg-white/5 border border-white/10 rounded-lg p-4 backdrop-blur-sm hover:bg-white/10 transition-colors">
+    <div className="bg-theme-bg-secondary/50 border border-theme-glass-border rounded-lg p-4 backdrop-blur-sm hover:bg-theme-glass-bg transition-colors">
         <div className="flex justify-between items-start mb-2">
             <div className={`p-1.5 rounded bg-opacity-20 ${color}`}>
                 <Icon size={16} className={color.replace('bg-', 'text-')} />
             </div>
             {trend !== undefined && trend !== 0 && (
-                <span className={`text-[11px] font-semibold ${trend > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                <span className={`text-[11px] font-semibold ${trend > 0 ? 'text-green-500' : 'text-red-500'}`}>
                     {trend > 0 ? '↑' : '↓'}{Math.abs(trend)}%
                 </span>
             )}
         </div>
-        <div className="text-xl font-bold text-white leading-tight">{value}</div>
-        <div className="text-[10px] text-gray-500 uppercase tracking-tighter mt-1 truncate" title={label || title}>
+        <div className="text-xl font-bold text-theme-text-primary leading-tight">{value}</div>
+        <div className="text-[10px] text-theme-text-secondary uppercase tracking-tighter mt-1 truncate" title={label || title}>
             {title}
         </div>
         {label && label !== title && (
-            <div className="text-[9px] text-gray-600 mt-0.5 truncate">{label}</div>
+            <div className="text-[9px] text-theme-text-muted mt-0.5 truncate">{label}</div>
         )}
     </div>
 );
@@ -76,7 +76,7 @@ export function Overview() {
     }, [range]);
 
     if (loading && !data) return (
-        <div className="flex flex-col items-center justify-center min-h-[400px] text-white">
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-theme-text-primary">
             <Activity size={48} className="animate-spin text-indigo-500 mb-4" />
             <div className="text-xl font-medium animate-pulse">Loading Analytics...</div>
         </div>

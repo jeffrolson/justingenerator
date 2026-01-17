@@ -176,16 +176,16 @@ export function UserManager() {
     };
 
     return (
-        <div className="max-w-[1600px] mx-auto text-white">
+        <div className="max-w-[1600px] mx-auto text-theme-text-primary">
             <div className="flex justify-between items-center mb-6">
                 <div className="flex flex-col md:flex-row gap-4 items-center justify-between w-full">
                     <h2 className="text-2xl font-bold hidden md:block">User Management</h2>
                     <div className="relative flex-1 w-full">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-theme-text-muted" size={20} />
                         <input
                             type="search"
                             placeholder="Search by name or email..."
-                            className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
+                            className="w-full bg-theme-bg-secondary/50 border border-theme-glass-border rounded-xl py-2.5 pl-10 pr-4 text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-medium"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -202,19 +202,19 @@ export function UserManager() {
                         </button>
                         <button
                             onClick={fetchUsers}
-                            className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                            className="p-2.5 bg-theme-bg-secondary/50 border border-theme-glass-border rounded-xl text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-glass-bg transition-all"
                             title="Refresh List"
                         >
                             <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
                         </button>
                         <select
-                            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all cursor-pointer"
+                            className="bg-theme-bg-secondary/50 border border-theme-glass-border rounded-xl px-4 py-2.5 text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all cursor-pointer font-medium"
                             value={sortField}
                             onChange={(e) => setSortField(e.target.value)}
                         >
-                            <option value="createdAt">Newest Joined</option>
-                            <option value="name">Name</option>
-                            <option value="email">Email</option>
+                            <option value="createdAt" className="bg-theme-bg-primary">Newest Joined</option>
+                            <option value="name" className="bg-theme-bg-primary">Name</option>
+                            <option value="email" className="bg-theme-bg-primary">Email</option>
                             <option value="credits">Credits</option>
                             <option value="generationsCount">Generations</option>
                             <option value="totalSpent">Total Spent</option>
@@ -224,11 +224,11 @@ export function UserManager() {
                 </div>
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+            <div className="bg-theme-bg-secondary/50 border border-theme-glass-border rounded-xl overflow-hidden backdrop-blur-sm">
                 <table className="w-full text-left">
-                    <thead className="bg-black/20 text-gray-400 text-sm">
+                    <thead className="bg-theme-bg-primary/50 text-theme-text-secondary text-sm">
                         <tr>
-                            <th className="p-4 cursor-pointer hover:text-white transition-colors" onClick={() => toggleSort('name')}>
+                            <th className="p-4 cursor-pointer hover:text-theme-text-primary transition-colors" onClick={() => toggleSort('name')}>
                                 <div className="flex items-center gap-2">
                                     User {sortField === 'name' && (sortOrder === 'ASC' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
                                 </div>
@@ -275,22 +275,22 @@ export function UserManager() {
                             users.map(user => (
                                 <tr key={user.id} className="hover:bg-white/5 transition-colors">
                                     <td className="p-4">
-                                        <div className="font-medium">{user.name || 'Anonymous'}</div>
-                                        <div className="text-xs text-gray-500">
+                                        <div className="font-medium text-theme-text-primary">{user.name || 'Anonymous'}</div>
+                                        <div className="text-xs text-theme-text-muted">
                                             {user.email || <span className="text-orange-500/70" title="Missing Email">UID: {user.id}</span>}
                                         </div>
                                     </td>
                                     <td className="p-4">
-                                        <span className={`text-xs px-2 py-1 rounded-full ${user.role === 'admin' ? 'bg-violet-500/20 text-violet-300' : 'bg-gray-500/20 text-gray-300'}`}>
+                                        <span className={`text-xs px-2 py-1 rounded-full ${user.role === 'admin' ? 'bg-violet-500/20 text-violet-300' : 'bg-theme-glass-bg text-theme-text-secondary'}`}>
                                             {user.role}
                                         </span>
                                     </td>
-                                    <td className="p-4 font-mono group relative">
+                                    <td className="p-4 font-mono group relative text-theme-text-primary">
                                         <div className="flex items-center gap-2">
                                             {user.credits}
                                             <button
                                                 onClick={() => handleUpdateCredits(user)}
-                                                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded transition-all text-violet-400"
+                                                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-theme-glass-bg rounded transition-all text-violet-400"
                                                 title="Adjust Credits"
                                             >
                                                 <Sparkles size={12} />
@@ -298,7 +298,7 @@ export function UserManager() {
                                         </div>
                                     </td>
                                     <td
-                                        className="p-4 font-mono text-center cursor-pointer hover:text-violet-400 underline underline-offset-4 decoration-white/10"
+                                        className="p-4 font-mono text-center cursor-pointer hover:text-violet-400 underline underline-offset-4 decoration-white/10 text-theme-text-primary"
                                         onClick={() => {
                                             setSelectedUser(user);
                                             fetchUserGenerations(user.id);
@@ -306,15 +306,15 @@ export function UserManager() {
                                     >
                                         {user.generationsCount || 0}
                                     </td>
-                                    <td className="p-4 font-mono text-green-400">${(user.totalSpent || 0).toFixed(2)}</td>
-                                    <td className="p-4 text-xs text-gray-400">
-                                        {user.createdAt ? new Date(user.createdAt).toLocaleString() : <span className="text-gray-600 italic">Unknown</span>}
+                                    <td className="p-4 font-mono text-green-400 font-bold">${(user.totalSpent || 0).toFixed(2)}</td>
+                                    <td className="p-4 text-xs text-theme-text-secondary">
+                                        {user.createdAt ? new Date(user.createdAt).toLocaleString() : <span className="text-theme-text-muted italic">Unknown</span>}
                                     </td>
-                                    <td className="p-4 text-xs text-gray-400">
-                                        {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : <span className="text-gray-600 italic">Never</span>}
+                                    <td className="p-4 text-xs text-theme-text-secondary">
+                                        {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : <span className="text-theme-text-muted italic">Never</span>}
                                     </td>
                                     <td className="py-4 px-4 text-right">
-                                        <div className="flex justify-end gap-2">
+                                        <div className="flex justify-end gap-2 text-theme-text-secondary">
                                             <button
                                                 onClick={() => handleViewInsights(user)}
                                                 className="p-2 text-violet-400 hover:bg-violet-500/10 rounded-lg transition-colors"
@@ -327,14 +327,14 @@ export function UserManager() {
                                                     setSelectedUser(user);
                                                     fetchUserGenerations(user.id);
                                                 }}
-                                                className="p-2 text-gray-400 hover:bg-white/5 rounded-lg transition-colors"
+                                                className="p-2 text-theme-text-secondary hover:bg-theme-glass-bg rounded-lg transition-colors"
                                                 title="View History"
                                             >
                                                 <History size={18} />
                                             </button>
                                             <button
                                                 onClick={() => handleToggleRole(user)}
-                                                className={`p-2 rounded-lg transition-colors ${user.role === 'admin' ? 'text-amber-400 hover:bg-amber-500/10' : 'text-gray-400 hover:bg-white/5'}`}
+                                                className={`p-2 rounded-lg transition-colors ${user.role === 'admin' ? 'text-amber-400 hover:bg-amber-500/10' : 'text-theme-text-secondary hover:bg-theme-glass-bg'}`}
                                                 title={user.role === 'admin' ? 'Revoke Admin' : 'Make Admin'}
                                             >
                                                 {user.role === 'admin' ? <ShieldAlert size={18} /> : <Shield size={18} />}
@@ -354,7 +354,7 @@ export function UserManager() {
                                                         }
                                                     }
                                                 }}
-                                                className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                                                className="p-2 text-theme-text-secondary hover:text-red-400 transition-colors px-3 py-1 bg-red-400/5 rounded-lg border border-red-500/10"
                                                 title="Delete User"
                                             >
                                                 <Trash2 size={18} />

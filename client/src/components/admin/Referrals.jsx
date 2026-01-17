@@ -76,7 +76,7 @@ export function Referrals() {
         }
     };
 
-    if (loading) return <div className="text-white text-center p-8 text-sm">Loading Referral System...</div>;
+    if (loading) return <div className="text-theme-text-primary text-center p-8 text-sm">Loading Referral System...</div>;
 
     return (
         <div className="max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500">
@@ -88,16 +88,16 @@ export function Referrals() {
                             <Gift size={24} />
                         </div>
                         <div>
-                            <h3 className="text-xl font-bold text-white">Referral Configuration</h3>
-                            <p className="text-gray-400 text-sm">Set rewards and toggle the entire system</p>
+                            <h3 className="text-xl font-bold text-theme-text-primary">Referral Configuration</h3>
+                            <p className="text-theme-text-secondary text-sm">Set rewards and toggle the entire system</p>
                         </div>
                     </div>
 
                     <div className="space-y-6">
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-black/20 border border-white/5">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-theme-bg-primary/50 border border-theme-glass-border">
                             <div>
-                                <div className="font-semibold text-white">Enable Referral System</div>
-                                <div className="text-sm text-gray-500">Allow users to invite friends and earn credits</div>
+                                <div className="font-semibold text-theme-text-primary">Enable Referral System</div>
+                                <div className="text-sm text-theme-text-secondary">Allow users to invite friends and earn credits</div>
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer">
                                 <input
@@ -119,11 +119,11 @@ export function Referrals() {
                                 <div className="flex items-center gap-3">
                                     <input
                                         type="number"
-                                        className="bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 w-32 font-mono text-lg"
+                                        className="bg-theme-bg-primary/50 border border-theme-glass-border rounded-lg px-4 py-2 text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-amber-500/50 w-32 font-mono text-lg"
                                         value={settings.referralCredits}
                                         onChange={(e) => setSettings({ ...settings, referralCredits: parseInt(e.target.value) || 0 })}
                                     />
-                                    <span className="text-gray-500 text-sm">Credits will be granted to both the referrer and the new user.</span>
+                                    <span className="text-theme-text-secondary text-sm">Credits will be granted to both the referrer and the new user.</span>
                                 </div>
                             </label>
                         </div>
@@ -155,12 +155,12 @@ export function Referrals() {
                             <h4 className="font-bold">Summary</h4>
                         </div>
                         <div className="space-y-4">
-                            <div className="flex justify-between items-end border-b border-white/5 pb-3">
-                                <span className="text-gray-400 text-sm">Total Referrals</span>
-                                <span className="text-2xl font-bold font-mono text-white">{referrals.length}</span>
+                            <div className="flex justify-between items-end border-b border-theme-glass-border pb-3">
+                                <span className="text-theme-text-secondary text-sm">Total Referrals</span>
+                                <span className="text-2xl font-bold font-mono text-theme-text-primary">{referrals.length}</span>
                             </div>
-                            <div className="flex justify-between items-end border-b border-white/5 pb-3">
-                                <span className="text-gray-400 text-sm">Total Credits Awarded</span>
+                            <div className="flex justify-between items-end border-b border-theme-glass-border pb-3">
+                                <span className="text-theme-text-secondary text-sm">Total Credits Awarded</span>
                                 <span className="text-2xl font-bold font-mono text-violet-400">
                                     {referrals.reduce((acc, curr) => acc + (curr.amount || 0), 0) * 2}
                                 </span>
@@ -168,9 +168,9 @@ export function Referrals() {
                         </div>
                     </div>
 
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 h-fit text-sm text-gray-400 space-y-3">
+                    <div className="bg-theme-bg-secondary/50 border border-theme-glass-border rounded-2xl p-6 h-fit text-sm text-theme-text-secondary space-y-3">
                         <p>
-                            <strong className="text-white">Note:</strong> Disabling the system only prevents the dashboard card from showing and stops new referrals from being tracked.
+                            <strong className="text-theme-text-primary">Note:</strong> Disabling the system only prevents the dashboard card from showing and stops new referrals from being tracked.
                         </p>
                         <p>
                             Existing referral credits already granted will remain in user accounts.
@@ -180,10 +180,10 @@ export function Referrals() {
             </div>
 
             {/* History Table */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-sm">
-                <div className="px-8 py-6 border-b border-white/10 flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                        <Share2 size={18} className="text-gray-400" />
+            <div className="bg-theme-bg-secondary/50 border border-theme-glass-border rounded-2xl overflow-hidden backdrop-blur-sm">
+                <div className="px-8 py-6 border-b border-theme-glass-border flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-theme-text-primary flex items-center gap-2">
+                        <Share2 size={18} className="text-theme-text-secondary" />
                         Referral History
                     </h3>
                     <button
@@ -195,7 +195,7 @@ export function Referrals() {
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead className="bg-black/20 text-gray-400 text-xs uppercase tracking-wider">
+                        <thead className="bg-theme-bg-primary/50 text-theme-text-secondary text-xs uppercase tracking-wider">
                             <tr>
                                 <th className="p-4 pl-8">Referrer (UID)</th>
                                 <th className="p-4 text-center"></th>
@@ -224,7 +224,7 @@ export function Referrals() {
                                         <td className="p-4 font-mono text-right text-sm">
                                             +{ref.amount} Credits
                                         </td>
-                                        <td className="p-4 pr-8 text-right text-xs text-gray-500">
+                                        <td className="p-4 pr-8 text-right text-xs text-theme-text-secondary">
                                             {new Date(ref.timestamp).toLocaleString()}
                                         </td>
                                     </tr>

@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+@theme {
+  --color-theme-text-primary: var(--text-primary);
+  --color-theme-text-secondary: var(--text-secondary);
+  --color-theme-text-muted: var(--text-muted);
+  --color-theme-bg-primary: var(--bg-primary);
+  --color-theme-bg-secondary: var(--bg-secondary);
+  --color-theme-glass-bg: var(--glass-bg);
+  --color-theme-glass-border: var(--glass-border);
+}
+
 :root {
   font-family: 'Outfit', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
