@@ -181,7 +181,9 @@ export function UserManager() {
                                 <tr key={user.id} className="hover:bg-white/5 transition-colors">
                                     <td className="p-4">
                                         <div className="font-medium">{user.name || 'Anonymous'}</div>
-                                        <div className="text-xs text-gray-500">{user.email}</div>
+                                        <div className="text-xs text-gray-500">
+                                            {user.email || <span className="text-orange-500/70" title="Missing Email">UID: {user.id}</span>}
+                                        </div>
                                     </td>
                                     <td className="p-4">
                                         <span className={`text-xs px-2 py-1 rounded-full ${user.role === 'admin' ? 'bg-violet-500/20 text-violet-300' : 'bg-gray-500/20 text-gray-300'}`}>
@@ -200,7 +202,7 @@ export function UserManager() {
                                     </td>
                                     <td className="p-4 font-mono text-green-400">${(user.totalSpent || 0).toFixed(2)}</td>
                                     <td className="p-4 text-xs text-gray-400">
-                                        {new Date(user.createdAt).toLocaleString()}
+                                        {user.createdAt ? new Date(user.createdAt).toLocaleString() : <span className="text-gray-600 italic">Unknown</span>}
                                     </td>
                                     <td className="p-4 text-right">
                                         <div className="flex items-center justify-end gap-2">

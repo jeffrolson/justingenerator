@@ -166,8 +166,8 @@ app.post('/api/auth/verify', async (c) => {
     console.log(`[Verify] Verifying token (length: ${token.length})`)
     const payload = await firebase.verifyToken(token)
     const uid = payload.sub
-    const { firstName, lastName } = body
-    console.log(`[Verify] Token verified for UID: ${uid}. Name metadata:`, { firstName, lastName })
+    const { firstName, lastName, displayName: bodyDisplayName } = body
+    console.log(`[Verify] Token verified for UID: ${uid}. Name metadata:`, { firstName, lastName, bodyDisplayName })
 
     // 2. Fetch/Create User in Firestore
     let userDoc: any
@@ -189,7 +189,7 @@ app.post('/api/auth/verify', async (c) => {
 
       let fName = firstName || ''
       let lName = lastName || ''
-      let displayName = (payload.name as string) || ''
+      let displayName = (payload.name as string) || bodyDisplayName || ''
 
       // If we don't have a display name from token, try to construct from parts
       if (!displayName && (fName || lName)) {
@@ -292,7 +292,7 @@ app.post('/api/auth/verify', async (c) => {
 
         let fName = firstName || ''
         let lName = lastName || ''
-        let displayName = (payload.name as string) || ''
+        let displayName = (payload.name as string) || bodyDisplayName || ''
 
         if (!displayName && (fName || lName)) displayName = `${fName} ${lName}`.trim()
         if (!displayName) displayName = 'Anonymous'
@@ -945,19 +945,36 @@ app.get('/api/admin/users', async (c) => {
     }) as any[]
 
     // Background Repair: Fix users missing metadata
-    const usersToRepair = users.filter((u: any) => !u.createdAt?.timestampValue);
+    const usersToRepair = users.filter((u: any) => !u.createdAt?.timestampValue || !u.email?.stringValue || !u.name?.stringValue);
+
     if (usersToRepair.length > 0) {
-      console.log(`[Admin] Found ${usersToRepair.length} users missing createdAt. Scheduling repair...`);
+      const repairCount = usersToRepair.length;
+      console.log(`[Admin] Found ${repairCount} users with missing metadata. Scheduling repair...`);
+
       c.executionCtx.waitUntil((async () => {
+        let successCount = 0;
         for (const u of usersToRepair) {
           try {
-            await firebase.firestore('PATCH', `users/${u.id}?updateMask.fieldPaths=createdAt`, {
-              fields: { createdAt: { timestampValue: new Date().toISOString() } }
-            });
+            const updatePaths = [];
+            const fields: any = {};
+
+            if (!u.createdAt?.timestampValue) {
+              updatePaths.push('updateMask.fieldPaths=createdAt');
+              fields.createdAt = { timestampValue: new Date().toISOString() };
+            }
+            // For email/name, we can't invent them, but if we have one part we might fix others? 
+            // Or just ensure the createdAt exists so they sort correctly.
+            // If they are missing email, we can't really fix it without auth data which we don't have here.
+
+            if (updatePaths.length > 0) {
+              await firebase.firestore('PATCH', `users/${u.id}?${updatePaths.join('&')}`, { fields });
+              successCount++;
+            }
           } catch (e) {
             console.error(`Failed to repair user ${u.id}`, e);
           }
         }
+        console.log(`[Admin] Repaired ${successCount}/${repairCount} users.`);
       })());
     }
 
