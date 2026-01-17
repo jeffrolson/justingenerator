@@ -127,11 +127,13 @@ export function ExploreFeed({ onRemix }) {
                         className="group relative aspect-[3/4] rounded-2xl overflow-hidden bg-gray-900 border border-white/5 hover:border-violet-500/50 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-violet-500/20"
                     >
                         <img
-                            src={getImageUrl(item.imageUrl, apiUrl)}
-                            onLoad={() => console.log('Image loaded:', getImageUrl(item.imageUrl, apiUrl))}
-                            onError={() => console.error('Image FAILED:', { path: item.imageUrl, apiUrl, final: getImageUrl(item.imageUrl, apiUrl) })}
+                            src={getImageUrl(item.imageUrl, apiUrl, 400)}
+                            onLoad={() => console.log('Image loaded:', getImageUrl(item.imageUrl, apiUrl, 400))}
+                            onError={() => console.error('Image FAILED:', { path: item.imageUrl, apiUrl, final: getImageUrl(item.imageUrl, apiUrl, 400) })}
                             alt={item.summary}
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                            loading="lazy"
+                            decoding="async"
                         />
 
                         {/* Overlay - Visible on mobile by default, hover on desktop */}

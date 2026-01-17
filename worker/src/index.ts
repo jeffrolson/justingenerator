@@ -1710,7 +1710,8 @@ app.get('/api/public/image/:path', async (c) => {
   const headers = new Headers()
   object.writeHttpMetadata(headers)
   headers.set('etag', object.httpEtag)
-  headers.set('Cache-Control', 'public, max-age=31536000')
+  headers.set('Cache-Control', 'public, max-age=31536000, immutable')
+  headers.set('Access-Control-Allow-Origin', '*')
 
   return new Response(object.body, { headers })
 })
@@ -1718,13 +1719,14 @@ app.get('/api/public/image/:path', async (c) => {
 // Serve Image helper
 app.get('/api/image/:path', async (c) => {
   const path = c.req.param('path')
-  // Decoding path is handled by param, but if slashes are encoded we might need manual decode or check
   const object = await c.env.BUCKET.get(path)
   if (!object) return c.text('Not found', 404)
 
   const headers = new Headers()
   object.writeHttpMetadata(headers)
   headers.set('etag', object.httpEtag)
+  headers.set('Cache-Control', 'public, max-age=31536000, immutable')
+  headers.set('Access-Control-Allow-Origin', '*')
 
   return new Response(object.body, {
     headers

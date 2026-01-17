@@ -583,7 +583,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                                 onClick={() => setSelectedPresetId(preset.id)}
                                                 className={`group relative aspect-[4/3] rounded-xl overflow-hidden border-2 transition-all ${selectedPresetId === preset.id ? 'border-violet-500 ring-2 ring-violet-500/50' : 'border-white/5 hover:border-white/20'}`}
                                             >
-                                                <img src={getImageUrl(preset.sampleUrl, apiUrl)} alt={preset.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                                <img src={getImageUrl(preset.sampleUrl, apiUrl, 200)} alt={preset.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" loading="lazy" decoding="async" />
                                                 <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity ${selectedPresetId === preset.id ? 'opacity-100' : 'opacity-60 group-hover:opacity-80'}`}></div>
                                                 <div className="absolute inset-0 flex flex-col justify-end p-3">
                                                     <p className="text-[10px] font-bold text-white uppercase tracking-wider">{preset.title}</p>
@@ -707,7 +707,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 animate-fade-in-up">
                                         {activeJob.results.slice().reverse().map((url, i) => (
                                             <div key={i} className="aspect-square rounded-lg overflow-hidden border border-white/10 glass shadow-2xl relative group">
-                                                <img src={getImageUrl(url, apiUrl)} alt="Result" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                                <img src={getImageUrl(url, apiUrl, 400)} alt="Result" className="w-full h-full object-cover transition-transform group-hover:scale-110" loading="lazy" decoding="async" />
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                             </div>
                                         ))}
@@ -874,9 +874,11 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                             }}
                                         >
                                             <img
-                                                src={getImageUrl(item.imageUrl, apiUrl)}
+                                                src={getImageUrl(item.imageUrl, apiUrl, 400)}
                                                 alt={item.prompt}
                                                 className="w-full h-full object-cover rounded-xl transition-transform duration-700 group-hover:scale-105"
+                                                loading="lazy"
+                                                decoding="async"
                                             />
 
                                             {/* Quick Actions Overlay - Always visible on mobile, hover on desktop */}

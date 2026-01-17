@@ -1,4 +1,4 @@
-export const getImageUrl = (path, apiUrl) => {
+export const getImageUrl = (path, apiUrl, width) => {
     if (!path) return '';
 
     // If it's already a full URL (correctly formed)
@@ -13,7 +13,6 @@ export const getImageUrl = (path, apiUrl) => {
 
     // If it's an example image, it's served from the public folder (skips R2/API proxy)
     if (path.startsWith('/examples/')) {
-        // Return full origin path to ensure it loads correctly on all devices including mobile
         const origin = window.location.origin;
         return `${origin}${path}`;
     }
@@ -24,7 +23,12 @@ export const getImageUrl = (path, apiUrl) => {
     // Ensure path has exactly one leading slash
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
 
-    const finalUrl = `${base}${normalizedPath}`;
+    let finalUrl = `${base}${normalizedPath}`;
+
+    // Append width if provided
+    if (width) {
+        finalUrl += (finalUrl.includes('?') ? '&' : '?') + `w=${width}`;
+    }
 
     // Final emergency fix for missing protocol colon
     return finalUrl.replace(/https\/\//g, 'https://').replace(/http\/\//g, 'http://');
