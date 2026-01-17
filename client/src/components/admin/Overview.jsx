@@ -226,7 +226,7 @@ export function Overview() {
                 <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
                     <h3 className="text-xl font-bold text-white mb-6">User Growth & Activity</h3>
                     <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="99%" height="100%" minHeight={300}>
                             <AreaChart data={charts.growth}>
                                 <defs>
                                     <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
@@ -252,7 +252,7 @@ export function Overview() {
                 <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
                     <h3 className="text-xl font-bold text-white mb-6">Financial Performance</h3>
                     <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="99%" height="100%" minHeight={300}>
                             <LineChart data={charts.growth}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                 <XAxis dataKey="date" stroke="#666" tick={{ fill: '#999' }} tickFormatter={d => d.slice(5)} />

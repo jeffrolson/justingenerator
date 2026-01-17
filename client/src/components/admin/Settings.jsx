@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Save, RefreshCcw, ShieldCheck, Cpu, MessageCircle, Layers } from 'lucide-react';
+import { Save, RefreshCw, ShieldCheck, Cpu, MessageCircle, Layers } from 'lucide-react';
 
 export function Settings() {
     const { getToken } = useAuth();
@@ -123,7 +123,7 @@ export function Settings() {
                         disabled={saving}
                         className="flex items-center gap-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-semibold transition-all shadow-lg shadow-violet-500/20"
                     >
-                        {saving ? <RefreshCcw className="animate-spin" size={20} /> : <Save size={20} />}
+                        {saving ? <RefreshCw className="animate-spin" size={20} /> : <Save size={20} />}
                         {saving ? 'Saving...' : 'Save Settings'}
                     </button>
                 </div>
@@ -297,7 +297,7 @@ export function Settings() {
 
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-6 flex gap-4">
                 <div className="p-2 bg-amber-500/20 rounded-lg h-fit text-amber-500">
-                    <RefreshCcw size={20} />
+                    <RefreshCw size={20} />
                 </div>
                 <div>
                     <h4 className="font-semibold text-white mb-1">Configuration Sync</h4>

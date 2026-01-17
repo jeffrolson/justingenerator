@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Search, Trash2, ArrowUp, ArrowDown, History, X, ExternalLink, Shield, ShieldAlert, RefreshCcw } from 'lucide-react';
+import { Search, Trash2, ArrowUp, ArrowDown, History, X, ExternalLink, Shield, ShieldAlert, RefreshCw } from 'lucide-react';
 
 export function UserManager() {
     const { getToken } = useAuth();
@@ -116,7 +116,7 @@ export function UserManager() {
                             className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-all"
                             title="Refresh List"
                         >
-                            <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
+                            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
                         </button>
                         <select
                             className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all cursor-pointer"
