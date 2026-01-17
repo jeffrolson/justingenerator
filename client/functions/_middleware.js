@@ -2,6 +2,11 @@ export async function onRequest(context) {
     const { request, next } = context;
     const url = new URL(request.url);
 
+    // ONLY intercept traffic to the Firebase auth handler
+    if (!url.pathname.startsWith("/__/auth/")) {
+        return next();
+    }
+
     // Construct the target URL on the default Firebase domain
     const targetUrl = new URL(url.pathname + url.search, "https://justingenerator.firebaseapp.com");
 
