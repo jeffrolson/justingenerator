@@ -85,7 +85,7 @@ export function ExploreFeed({ onRemix }) {
                 {user && (
                     <button
                         onClick={() => window.location.href = '/'}
-                        className="md:absolute left-0 top-0 flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium bg-white/5 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 mb-6 md:mb-0 mx-auto md:mx-0 w-fit"
+                        className="md:absolute left-0 top-0 flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors text-sm font-medium bg-[var(--glass-bg)] px-4 py-2 rounded-full border border-[var(--glass-border)] hover:bg-[var(--bg-accent)] mb-6 md:mb-0 mx-auto md:mx-0 w-fit"
                     >
                         <ArrowRight className="w-4 h-4 rotate-180" />
                         Back to Studio
@@ -95,10 +95,10 @@ export function ExploreFeed({ onRemix }) {
                     <Sparkles className="w-4 h-4" />
                     <span>Discovery Feed</span>
                 </div>
-                <h1 className="text-3xl md:text-6xl font-bold tracking-tight text-white px-2">
+                <h1 className="text-3xl md:text-6xl font-bold tracking-tight text-[var(--text-primary)] px-2">
                     Explore the <span className="bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-fuchsia-400">Masterpieces</span>
                 </h1>
-                <p className="text-gray-300 text-base md:text-lg max-w-2xl mx-auto px-4 font-medium">
+                <p className="text-[var(--text-secondary)] text-base md:text-lg max-w-2xl mx-auto px-4 font-medium">
                     Click any photo below to transform your own photo into that style instantly.
                 </p>
 
@@ -109,12 +109,12 @@ export function ExploreFeed({ onRemix }) {
                         { step: "2", title: "Upload Photo", desc: "Upload a selfie or clear photo of yourself." },
                         { step: "3", title: "Get Your Art", desc: "Our AI generates a new portrait of you in that style!" }
                     ].map((item, i) => (
-                        <div key={i} className="flex flex-col items-center space-y-2 p-4 rounded-2xl bg-white/5 border border-white/10">
+                        <div key={i} className="flex flex-col items-center space-y-2 p-4 rounded-2xl bg-[var(--glass-bg)] border border-[var(--glass-border)]">
                             <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-violet-600/20">
                                 {item.step}
                             </div>
-                            <h4 className="text-white font-bold text-sm">{item.title}</h4>
-                            <p className="text-slate-400 text-xs leading-relaxed">{item.desc}</p>
+                            <h4 className="text-[var(--text-primary)] font-bold text-sm">{item.title}</h4>
+                            <p className="text-[var(--text-secondary)] text-xs leading-relaxed">{item.desc}</p>
                         </div>
                     ))}
                 </div>

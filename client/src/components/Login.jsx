@@ -57,11 +57,11 @@ export function Login() {
                         <Sparkles className="w-8 h-8 text-violet-300" />
                     </div>
 
-                    <h1 className="text-4xl font-bold text-white tracking-tight">
+                    <h1 className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">
                         {isSignUp ? 'Join' : 'Welcome to'} <span className="text-violet-400">Justin Generator</span>
                     </h1>
 
-                    <p className="text-slate-300 text-sm">
+                    <p className="text-[var(--text-secondary)] text-sm font-medium">
                         {isSignUp
                             ? 'Create an account to start generating AI masterpieces.'
                             : 'Transform your moments into digital masterpieces using next-gen AI.'}
@@ -82,7 +82,7 @@ export function Login() {
                                         required
                                         value={firstName}
                                         onChange={(e) => setFirstName(e.target.value)}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all"
+                                        className="w-full bg-[var(--glass-input-bg)] border border-[var(--glass-border)] rounded-xl py-3 pl-10 pr-4 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all"
                                         placeholder="Justin"
                                     />
                                 </div>
@@ -98,7 +98,7 @@ export function Login() {
                                         required
                                         value={lastName}
                                         onChange={(e) => setLastName(e.target.value)}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all"
+                                        className="w-full bg-[var(--glass-input-bg)] border border-[var(--glass-border)] rounded-xl py-3 pl-10 pr-4 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all"
                                         placeholder="V"
                                     />
                                 </div>
@@ -107,17 +107,17 @@ export function Login() {
                     )}
 
                     <div className="space-y-2">
-                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Email Address</label>
+                        <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider ml-1">Email Address</label>
                         <div className="relative group">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Mail className="h-4 w-4 text-slate-500 group-focus-within:text-violet-400 transition-colors" />
+                                <Mail className="h-4 w-4 text-[var(--text-muted)] group-focus-within:text-violet-400 transition-colors" />
                             </div>
                             <input
                                 type="email"
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all"
+                                className="w-full bg-[var(--glass-input-bg)] border border-[var(--glass-border)] rounded-xl py-3 pl-10 pr-4 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all"
                                 placeholder="name@example.com"
                                 autoComplete="email"
                             />
@@ -135,7 +135,7 @@ export function Login() {
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all"
+                                className="w-full bg-[var(--glass-input-bg)] border border-[var(--glass-border)] rounded-xl py-3 pl-10 pr-4 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all"
                                 placeholder="••••••••"
                                 autoComplete="current-password"
                             />
@@ -169,14 +169,14 @@ export function Login() {
                         <div className="w-full border-t border-white/5"></div>
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-[#0f172a] px-3 text-slate-500 font-bold">Or continue with</span>
+                        <span className="bg-[var(--bg-secondary)] px-3 text-[var(--text-muted)] font-bold">Or continue with</span>
                     </div>
                 </div>
 
                 <div className="space-y-4">
                     <button
                         onClick={handleGoogleLogin}
-                        className="w-full py-3 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-medium rounded-xl flex items-center justify-center gap-3 transition-all"
+                        className="w-full py-3 bg-[var(--glass-bg)] border border-[var(--glass-border)] hover:bg-[var(--bg-accent)] text-[var(--text-primary)] font-medium rounded-xl flex items-center justify-center gap-3 transition-all"
                     >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
                             <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />

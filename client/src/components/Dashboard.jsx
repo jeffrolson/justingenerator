@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { auth } from '../lib/firebase'; // Need auth for getToken
 import { getImageUrl } from '../lib/url';
 import {
@@ -21,7 +22,11 @@ import {
     Bookmark,
     Layers,
     Settings,
-    Search
+    Search,
+    User,
+    Moon,
+    Sun,
+    Monitor
 } from 'lucide-react';
 
 export function Dashboard({ initialRemix, onClearRemix }) {
@@ -48,6 +53,8 @@ export function Dashboard({ initialRemix, onClearRemix }) {
     const [activeTag, setActiveTag] = useState(null);
     const [features, setFeatures] = useState({ dailyRewards: true, referrals: true });
     const [previewUrl, setPreviewUrl] = useState(null);
+    const [showSettings, setShowSettings] = useState(false);
+    const { theme, setTheme } = useTheme();
 
     // Handle File Preview
     useEffect(() => {
@@ -456,29 +463,16 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                             <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider">Add</span>
                         </button>
                     </div>
-                    <div className="flex flex-col items-end gap-1 px-4 border-l border-white/10">
-                        <span className="text-slate-400 text-[10px] font-medium leading-none">Logged in as</span>
-                        <span className="text-slate-200 text-xs font-bold leading-none truncate max-w-[120px] md:max-w-none" title={user?.email}>
-                            {user?.email}
-                        </span>
-                    </div>
-                    {backendUser?.role?.stringValue === 'admin' && (
+                    <div className="flex items-center gap-3 px-4 border-l border-white/10">
                         <button
-                            onClick={() => window.location.href = '/admin'}
-                            className="text-violet-400 hover:text-violet-300 transition-colors flex items-center gap-2 text-[10px] md:text-sm font-bold uppercase tracking-wider hover:scale-105"
+                            onClick={() => setShowSettings(true)}
+                            className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-all hover:scale-110 active:scale-95 group relative"
+                            title="User Settings"
                         >
-                            <Settings className="w-4 h-4" />
-                            <span className="hidden xs:inline">Admin Portal</span>
-                            <span className="xs:hidden">Admin</span>
+                            <User className="w-5 h-5" />
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-violet-500 rounded-full border-2 border-[#050505] group-hover:scale-110 transition-transform"></div>
                         </button>
-                    )}
-                    <button
-                        onClick={logout}
-                        className="text-slate-400 hover:text-white transition-colors flex items-center gap-2 text-[10px] md:text-sm font-medium"
-                    >
-                        <LogOut className="w-4 h-4" />
-                        <span className="hidden sm:inline">Sign Out</span>
-                    </button>
+                    </div>
                 </div>
             </header>
 
@@ -1112,6 +1106,95 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                     </div>
                 )
             }
+            {/* User Settings Modal */}
+            {showSettings && (
+                <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setShowSettings(false)}></div>
+                    <div className="glass-panel w-full max-w-md rounded-3xl overflow-hidden relative animate-scale-in border border-white/10 shadow-2xl">
+                        <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5">
+                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                <User className="w-5 h-5 text-violet-400" />
+                                User Profile
+                            </h3>
+                            <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-white/10 rounded-xl transition-all">
+                                <X className="w-5 h-5 text-slate-400" />
+                            </button>
+                        </div>
+
+                        <div className="p-8 space-y-8">
+                            {/* User Info */}
+                            <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
+                                <div className="w-12 h-12 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-xl">
+                                    {user?.email?.[0].toUpperCase()}
+                                </div>
+                                <div className="flex-grow min-w-0">
+                                    <p className="text-white font-bold truncate">{user?.email}</p>
+                                    <p className="text-slate-400 text-xs">Member since {new Date(backendUser?.createdAt?.timestampValue || Date.now()).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+
+                            {/* Theme Selection */}
+                            <div className="space-y-4">
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Appearance</p>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <button
+                                        onClick={() => setTheme('light')}
+                                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${theme === 'light' ? 'bg-violet-600 border-violet-500 text-white shadow-lg shadow-violet-600/20' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/10'}`}
+                                    >
+                                        <Sun className="w-5 h-5" />
+                                        <span className="text-[10px] font-bold uppercase tracking-wider">Light</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setTheme('dark')}
+                                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${theme === 'dark' ? 'bg-violet-600 border-violet-500 text-white shadow-lg shadow-violet-600/20' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/10'}`}
+                                    >
+                                        <Moon className="w-5 h-5" />
+                                        <span className="text-[10px] font-bold uppercase tracking-wider">Dark</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setTheme('system')}
+                                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${theme === 'system' ? 'bg-violet-600 border-violet-500 text-white shadow-lg shadow-violet-600/20' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/10'}`}
+                                    >
+                                        <Monitor className="w-5 h-5" />
+                                        <span className="text-[10px] font-bold uppercase tracking-wider">System</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Stats */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Available Credits</p>
+                                    <p className="text-xl font-bold text-white">{credits}</p>
+                                </div>
+                                <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Account Role</p>
+                                    <p className="text-xl font-bold text-violet-400 uppercase tracking-tight">{backendUser?.role?.stringValue || 'User'}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 bg-white/5 border-t border-white/5 flex flex-col gap-3">
+                            {backendUser?.role?.stringValue === 'admin' && (
+                                <button
+                                    onClick={() => window.location.href = '/admin'}
+                                    className="w-full py-3 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-violet-600/20"
+                                >
+                                    <Settings className="w-4 h-4" />
+                                    Admin Portal
+                                </button>
+                            )}
+                            <button
+                                onClick={logout}
+                                className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                Sign Out
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }
