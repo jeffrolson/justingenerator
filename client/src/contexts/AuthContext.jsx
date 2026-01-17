@@ -42,7 +42,7 @@ export function AuthProvider({ children }) {
                 console.warn("Auth check timed out. Forcing loading to false.");
                 setLoading(false);
             }
-        }, 5000);
+        }, 10000);
 
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             clearTimeout(timeout);
@@ -91,13 +91,11 @@ export function AuthProvider({ children }) {
     const login = () => {
         const provider = new GoogleAuthProvider();
 
-        // Use redirect for mobile devices, popup for desktop
-        // Improved detection: UA check + Screen width check (small devices under 1024px)
-        const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        const isSmallScreen = window.innerWidth < 1024;
-        const isMobile = isMobileUA || isSmallScreen;
+        // ONLY use redirect for actual mobile devices. 
+        // Desktop browsers (even small windows) should use popups to avoid ITP issues.
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-        console.log(`[AuthContext] Login triggered. isMobile: ${isMobile} (UA: ${isMobileUA}, SmallScreen: ${isSmallScreen})`);
+        console.log(`[AuthContext] Login triggered. isMobile: ${isMobile}`);
 
         if (isMobile) {
             console.log("[AuthContext] Initiating signInWithRedirect...");
