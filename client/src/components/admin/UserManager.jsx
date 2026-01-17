@@ -50,6 +50,31 @@ export function UserManager() {
         }
     };
 
+    const handleSyncAuth = async () => {
+        if (!window.confirm("This will scan for 'Anonymous' users and attempt to pull their real names and emails from Firebase Auth. Continue?")) return;
+
+        try {
+            setLoading(true);
+            const token = await getToken();
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/sync-auth`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(`Sync complete! Repaired ${data.repaired} of ${data.total} anonymous users.`);
+                fetchUsers();
+            } else {
+                alert(data.error || 'Sync failed');
+            }
+        } catch (e) {
+            console.error("Sync Auth failed", e);
+            alert('An error occurred during sync');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleToggleRole = async (user) => {
         const newRole = user.role === 'admin' ? 'user' : 'admin';
         const confirmMsg = user.role === 'admin'
@@ -111,6 +136,15 @@ export function UserManager() {
                         />
                     </div>
                     <div className="flex gap-2 w-full md:w-auto">
+                        <button
+                            onClick={handleSyncAuth}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-violet-600/20 border border-violet-500/30 rounded-xl text-violet-300 hover:bg-violet-600/30 hover:border-violet-500/50 transition-all font-medium text-sm"
+                            title="Repair Anonymous Users from Firebase Auth"
+                            disabled={loading}
+                        >
+                            <Shield className={`size-4 ${loading ? 'animate-pulse' : ''}`} />
+                            <span className="hidden lg:inline">Sync with Auth</span>
+                        </button>
                         <button
                             onClick={fetchUsers}
                             className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-all"
@@ -298,6 +332,7 @@ export function UserManager() {
                                                             href={import.meta.env.VITE_API_URL + gen.imageUrl}
                                                             target="_blank"
                                                             className="text-white hover:text-indigo-400 p-1"
+                                                            rel="noreferrer"
                                                         >
                                                             <ExternalLink size={16} />
                                                         </a>

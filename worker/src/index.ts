@@ -1018,9 +1018,92 @@ app.get('/api/admin/users', async (c) => {
       return 0;
     });
 
-    return c.json({ status: 'success', users: filtered })
+    return c.json({
+      status: 'success',
+      users: filtered
+    })
   } catch (e: any) {
     console.error("User List Error", e)
+    return c.json({ error: e.message }, 500)
+  }
+})
+
+app.post('/api/admin/users/sync-auth', async (c) => {
+  const firebase = c.get('firebase')
+  try {
+    // 1. Find users needing repair
+    const usersRes = await firebase.query('users', { limit: 1000 }) as any[]
+    const needsRepair = usersRes.filter(u => {
+      const email = u.email?.stringValue
+      const name = u.name?.stringValue
+      return !email || name === 'Anonymous' || name === 'undefined undefined' || !name
+    })
+
+    if (needsRepair.length === 0) {
+      return c.json({ message: 'No users found needing repair' })
+    }
+
+    console.log(`[Sync] Found ${needsRepair.length} users needing sync from Auth`)
+
+    // 2. Perform repair (foreground to ensure it finishes for the admin)
+    let repaired = 0
+    const accessToken = await firebase.getAccessToken()
+
+    for (const u of needsRepair) {
+      try {
+        // Fetch from Firebase Auth REST API
+        const authUrl = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${c.env.GEMINI_API_KEY || ''}`
+        // Note: Using GEMINI_API_KEY as a placeholder, but actually needs Firebase Web API Key or Service Account
+        // Actually, we have service account access via getAccessToken() but for Auth we need to use a different scope or the REST API
+        // For simplicity, let's use the provided access token with the identitytoolkit scope if possible
+
+        const res = await fetch(`https://identitytoolkit.googleapis.com/v1/projects/${firebase.projectId}/accounts:lookup`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ localId: [u.id] })
+        })
+
+        if (!res.ok) continue
+        const data = await res.json() as any
+        const authUser = data.users?.[0]
+
+        if (authUser) {
+          const email = authUser.email
+          const displayName = authUser.displayName || email?.split('@')[0] || 'Anonymous'
+          const parts = displayName.split(' ')
+          const firstName = parts[0] || ''
+          const lastName = parts.slice(1).join(' ') || ''
+
+          const fields: any = {}
+          const updatePaths = []
+
+          if (email) {
+            fields.email = { stringValue: email }
+            updatePaths.push('updateMask.fieldPaths=email')
+          }
+          if (displayName && displayName !== 'Anonymous') {
+            fields.name = { stringValue: displayName }
+            fields.firstName = { stringValue: firstName }
+            fields.lastName = { stringValue: lastName }
+            updatePaths.push('updateMask.fieldPaths=name', 'updateMask.fieldPaths=firstName', 'updateMask.fieldPaths=lastName')
+          }
+
+          if (updatePaths.length > 0) {
+            await firebase.firestore('PATCH', `users/${u.id}?${updatePaths.join('&')}`, { fields })
+            repaired++
+          }
+        }
+      } catch (e) {
+        console.error(`[Sync] Failed to repair user ${u.id}:`, e)
+      }
+    }
+
+    return c.json({ status: 'success', repaired, total: needsRepair.length })
+  } catch (e: any) {
+    console.error("Sync Auth Error", e)
     return c.json({ error: e.message }, 500)
   }
 })
