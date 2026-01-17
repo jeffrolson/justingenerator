@@ -93,11 +93,18 @@ export function AuthProvider({ children }) {
         const provider = new GoogleAuthProvider();
 
         // Use redirect for mobile devices, popup for desktop
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        // Improved detection: UA check + Screen width check (small devices under 1024px)
+        const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isSmallScreen = window.innerWidth < 1024;
+        const isMobile = isMobileUA || isSmallScreen;
+
+        console.log(`[AuthContext] Login triggered. isMobile: ${isMobile} (UA: ${isMobileUA}, SmallScreen: ${isSmallScreen})`);
 
         if (isMobile) {
+            console.log("[AuthContext] Initiating signInWithRedirect...");
             return signInWithRedirect(auth, provider);
         } else {
+            console.log("[AuthContext] Initiating signInWithPopup...");
             return signInWithPopup(auth, provider);
         }
     };
