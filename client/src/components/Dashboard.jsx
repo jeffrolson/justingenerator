@@ -728,31 +728,38 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                 </div>
                             </div>
                         ) : result ? (
-                            <div className="w-full h-full max-h-[600px] flex items-center justify-center relative group animate-fade-in-up rounded-2xl overflow-hidden cursor-zoom-in" onClick={() => { setPreviewImage(result); setShowFullSize(true); }}>
-                                <img
-                                    src={result}
-                                    alt="Generated"
-                                    className="max-w-full max-h-full object-contain bg-black/50 backdrop-blur-sm transition-transform duration-500 group-hover:scale-[1.02]"
-                                />
-                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
-                                    <Plus className="w-12 h-12 text-white/80" />
+                            <div className="w-full space-y-4 animate-fade-in-up">
+                                <div
+                                    className="w-full max-h-[600px] flex items-center justify-center relative group rounded-2xl overflow-hidden cursor-zoom-in border border-white/10 glass shadow-2xl"
+                                    onClick={() => { setPreviewImage(result); setShowFullSize(true); }}
+                                >
+                                    <img
+                                        src={result}
+                                        alt="Generated"
+                                        className="max-w-full max-h-full object-contain transition-transform duration-500 group-hover:scale-[1.02]"
+                                    />
+                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
+                                        <Plus className="w-10 h-10 text-white/50" />
+                                    </div>
                                 </div>
-                                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-300 md:translate-y-0 flex gap-3" onClick={e => e.stopPropagation()}>
+
+                                <div className="flex flex-col sm:flex-row gap-3 pt-2" onClick={e => e.stopPropagation()}>
                                     <a
                                         href={result}
                                         download="generated.png"
-                                        className="flex-grow bg-white text-black font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-violet-50 transition-colors shadow-lg shadow-black/50"
+                                        className="flex-grow bg-white text-black font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 hover:bg-violet-50 transition-all shadow-lg active:scale-95"
                                     >
                                         <Download className="w-5 h-5" />
-                                        Download
+                                        Download Masterpiece
                                     </a>
                                     {currentGenId && (
                                         <button
-                                            onClick={() => {
+                                            onClick={(e) => {
+                                                e.stopPropagation();
                                                 const item = history.find(h => h.id === currentGenId) || { id: currentGenId, isPublic: false };
                                                 handleShare(item);
                                             }}
-                                            className="px-6 bg-violet-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-violet-500 transition-colors shadow-lg shadow-violet-600/30"
+                                            className="px-8 bg-violet-600 text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 hover:bg-violet-500 transition-all shadow-lg shadow-violet-600/20 active:scale-95"
                                         >
                                             <Share2 className="w-5 h-5" />
                                             Share
