@@ -24,19 +24,6 @@ export function AuthProvider({ children }) {
     const [backendUser, setBackendUser] = useState(null);
 
     useEffect(() => {
-        // Handle redirect result for mobile logins
-        const handleRedirect = async () => {
-            try {
-                const result = await getRedirectResult(auth);
-                if (result) {
-                    console.log("[AuthContext] Redirect login success:", result.user.email);
-                }
-            } catch (error) {
-                console.error("[AuthContext] Error getting redirect result:", error);
-            }
-        };
-        handleRedirect();
-
         const timeout = setTimeout(() => {
             if (loading) {
                 console.warn("Auth check timed out. Forcing loading to false.");
@@ -53,7 +40,6 @@ export function AuthProvider({ children }) {
                 try {
                     const token = await firebaseUser.getIdToken();
                     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8787';
-                    console.log(`[AuthContext] Syncing with backend: ${apiUrl}/api/auth/verify`);
 
                     const res = await fetch(`${apiUrl}/api/auth/verify`, {
                         method: 'POST',
@@ -66,11 +52,7 @@ export function AuthProvider({ children }) {
 
                     if (res.ok) {
                         const data = await res.json();
-                        console.log("[AuthContext] Backend sync success. Role:", data.user?.role?.stringValue);
                         setBackendUser(data.user);
-                    } else {
-                        const errData = await res.json().catch(() => ({}));
-                        console.error(`[AuthContext] Backend sync failed (${res.status}):`, errData);
                     }
                 } catch (error) {
                     console.error("[AuthContext] Error during backend sync:", error.message);
@@ -90,20 +72,8 @@ export function AuthProvider({ children }) {
 
     const login = () => {
         const provider = new GoogleAuthProvider();
-
-        // ONLY use redirect for actual mobile devices. 
-        // Desktop browsers (even small windows) should use popups to avoid ITP issues.
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-        console.log(`[AuthContext] Login triggered. isMobile: ${isMobile}`);
-
-        if (isMobile) {
-            console.log("[AuthContext] Initiating signInWithRedirect...");
-            return signInWithRedirect(auth, provider);
-        } else {
-            console.log("[AuthContext] Initiating signInWithPopup...");
-            return signInWithPopup(auth, provider);
-        }
+        console.log("[AuthContext] Initiating Google Login with Popup...");
+        return signInWithPopup(auth, provider);
     };
 
     const loginWithEmail = (email, password) => {
