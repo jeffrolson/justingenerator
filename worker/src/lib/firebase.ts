@@ -47,7 +47,7 @@ export class Firebase {
             iss: this.clientEmail,
             sub: this.clientEmail,
             aud: 'https://oauth2.googleapis.com/token',
-            scope: 'https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/datastore'
+            scope: 'https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/identitytoolkit'
         })
             .setProtectedHeader({ alg: algorithm, typ: 'JWT' })
             .setIssuedAt()

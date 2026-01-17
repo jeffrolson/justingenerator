@@ -1051,12 +1051,7 @@ app.post('/api/admin/users/sync-auth', async (c) => {
 
     for (const u of needsRepair) {
       try {
-        // Fetch from Firebase Auth REST API
-        const authUrl = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${c.env.GEMINI_API_KEY || ''}`
-        // Note: Using GEMINI_API_KEY as a placeholder, but actually needs Firebase Web API Key or Service Account
-        // Actually, we have service account access via getAccessToken() but for Auth we need to use a different scope or the REST API
-        // For simplicity, let's use the provided access token with the identitytoolkit scope if possible
-
+        console.log(`[Sync] Fetching Auth data for user: ${u.id}`)
         const res = await fetch(`https://identitytoolkit.googleapis.com/v1/projects/${firebase.projectId}/accounts:lookup`, {
           method: 'POST',
           headers: {
@@ -1066,7 +1061,12 @@ app.post('/api/admin/users/sync-auth', async (c) => {
           body: JSON.stringify({ localId: [u.id] })
         })
 
-        if (!res.ok) continue
+        if (!res.ok) {
+          const err = await res.text()
+          console.error(`[Sync] Auth Lookup failed for ${u.id}: ${res.status} ${err}`)
+          continue
+        }
+
         const data = await res.json() as any
         const authUser = data.users?.[0]
 
