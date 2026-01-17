@@ -63,8 +63,8 @@ export function Analytics() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-black/40 backdrop-blur-md border border-white/5 p-5 rounded-2xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-black/40 backdrop-blur-md border border-white/5 p-5 rounded-2xl group hover:border-violet-500/30 transition-all">
                     <div className="flex items-center gap-3 text-violet-400 mb-2">
                         <TrendingUp size={18} />
                         <span className="text-xs uppercase tracking-wider font-bold">Trending Type</span>
@@ -75,7 +75,7 @@ export function Analytics() {
                     <div className="text-xs text-gray-500 mt-1">Most used generation mode</div>
                 </div>
 
-                <div className="bg-black/40 backdrop-blur-md border border-white/5 p-5 rounded-2xl">
+                <div className="bg-black/40 backdrop-blur-md border border-white/5 p-5 rounded-2xl group hover:border-violet-500/30 transition-all">
                     <div className="flex items-center gap-3 text-fuchsia-400 mb-2">
                         <ImageIcon size={18} />
                         <span className="text-xs uppercase tracking-wider font-bold">Total Measured</span>
@@ -83,34 +83,78 @@ export function Analytics() {
                     <div className="text-2xl font-bold text-white">
                         {data.generationTypes.remix + data.generationTypes.preset + data.generationTypes.custom}
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">Generations analyzed in sample</div>
+                    <div className="text-xs text-gray-500 mt-1">Generations in current sample</div>
                 </div>
 
-                <div className="bg-black/40 backdrop-blur-md border border-white/5 p-5 rounded-2xl">
-                    <div className="flex items-center gap-3 text-orange-400 mb-2">
+                <div className="bg-black/40 backdrop-blur-md border border-violet-500/20 p-5 rounded-2xl bg-gradient-to-br from-violet-500/5 to-transparent">
+                    <div className="flex items-center gap-3 text-violet-300 mb-2">
                         <Award size={18} />
-                        <span className="text-xs uppercase tracking-wider font-bold">Top User Vol</span>
+                        <span className="text-xs uppercase tracking-wider font-bold">Lifetime Tokens</span>
                     </div>
                     <div className="text-2xl font-bold text-white">
-                        {data.powerUsers[0]?.count || 0}
+                        {data.financials?.totalTokens?.toLocaleString() || '0'}
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">Generations by top power user</div>
+                    <div className="text-xs text-gray-500 mt-1">Total API consumption</div>
+                </div>
+
+                <div className="bg-black/40 backdrop-blur-md border border-emerald-500/20 p-5 rounded-2xl bg-gradient-to-br from-emerald-500/5 to-transparent">
+                    <div className="flex items-center gap-3 text-emerald-400 mb-2">
+                        <span className="font-bold text-lg">$</span>
+                        <span className="text-xs uppercase tracking-wider font-bold">Est. Platform Cost</span>
+                    </div>
+                    <div className="text-2xl font-bold text-emerald-400">
+                        ${data.financials?.totalEstimatedCost?.toFixed(2) || '0.00'}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">Based on $0.50/1M tokens</div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Usage Trend Chart (Full Width) */}
+            <div className="bg-black/40 backdrop-blur-md border border-white/5 p-6 rounded-2xl">
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">Usage & Cost Trend</h3>
+                    <div className="flex gap-4 text-[10px] uppercase font-bold tracking-widest text-gray-500">
+                        <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-violet-500"></div> Requests</div>
+                        <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> Cost</div>
+                    </div>
+                </div>
+                <div className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={data.trend}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                            <XAxis
+                                dataKey="date"
+                                stroke="#555"
+                                fontSize={10}
+                                tickFormatter={(val) => new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            />
+                            <YAxis yAxisId="left" stroke="#8b5cf6" fontSize={10} />
+                            <YAxis yAxisId="right" orientation="right" stroke="#10b981" fontSize={10} tickFormatter={(val) => `$${val.toFixed(2)}`} />
+                            <Tooltip
+                                contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '12px' }}
+                                itemStyle={{ color: '#fff' }}
+                                labelStyle={{ color: '#888', marginBottom: '4px' }}
+                            />
+                            <Bar yAxisId="left" dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Generations" />
+                            <Bar yAxisId="right" dataKey="cost" fill="#10b981" radius={[4, 4, 0, 0]} name="Cost ($)" />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Generation Type Breakdown */}
                 <div className="bg-black/40 backdrop-blur-md border border-white/5 p-6 rounded-2xl">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6">Generation Type Distribution</h3>
-                    <div className="h-[300px]">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6">Generation Type</h3>
+                    <div className="h-[250px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
                                     data={typeData}
                                     cx="50%"
                                     cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={100}
+                                    innerRadius={50}
+                                    outerRadius={80}
                                     paddingAngle={5}
                                     dataKey="value"
                                 >
@@ -122,7 +166,36 @@ export function Analytics() {
                                     contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
                                     itemStyle={{ color: '#fff' }}
                                 />
-                                <Legend />
+                                <Legend wrapperStyle={{ fontSize: '10px' }} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Model Distribution */}
+                <div className="bg-black/40 backdrop-blur-md border border-white/5 p-6 rounded-2xl">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6">AI Models</h3>
+                    <div className="h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={Object.entries(data.modelStats || {}).map(([name, value]) => ({ name, value }))}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={50}
+                                    outerRadius={80}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {Object.entries(data.modelStats || {}).map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
+                                    itemStyle={{ color: '#fff' }}
+                                />
+                                <Legend wrapperStyle={{ fontSize: '10px' }} />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
@@ -130,26 +203,26 @@ export function Analytics() {
 
                 {/* Top Presets */}
                 <div className="bg-black/40 backdrop-blur-md border border-white/5 p-6 rounded-2xl">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6">Top 10 Presets (Usage)</h3>
-                    <div className="h-[300px]">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6">Top 10 Presets</h3>
+                    <div className="h-[250px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={data.topPresets} layout="vertical">
                                 <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={false} />
                                 <XAxis type="number" hide />
                                 <YAxis
-                                    dataKey="id"
+                                    dataKey="name"
                                     type="category"
-                                    width={120}
+                                    width={100}
                                     stroke="#888"
-                                    fontSize={12}
-                                    tickFormatter={(val) => val.length > 15 ? val.substring(0, 15) + '...' : val}
+                                    fontSize={9}
+                                    tickFormatter={(val) => val.length > 15 ? val.substring(0, 12) + '...' : val}
                                 />
                                 <Tooltip
                                     contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
                                     itemStyle={{ color: '#fff' }}
                                     cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                                 />
-                                <Bar dataKey="count" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                                <Bar dataKey="count" fill="#884dec" radius={[0, 4, 4, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>

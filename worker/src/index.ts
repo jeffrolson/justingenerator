@@ -1205,14 +1205,26 @@ app.get('/api/admin/analytics/popularity', async (c) => {
 
   try {
     // Fetch last 1000 generations to measure recent popularity
-    const gens = await firebase.query('generations', {
-      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
-      limit: 1000
-    }) as any[]
+    const [gens, presetsRes] = await Promise.all([
+      firebase.query('generations', {
+        orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+        limit: 1000
+      }),
+      firebase.query('stored_prompts', { limit: 100 })
+    ]) as [any[], any[]]
+
+    const presetNames: Record<string, string> = {}
+    presetsRes.forEach(p => {
+      presetNames[p.id] = p.name?.stringValue || 'Untitled'
+    })
 
     const typeStats = { remix: 0, preset: 0, custom: 0 }
     const presetCounts: Record<string, number> = {}
     const userCounts: Record<string, number> = {}
+
+    let totalTokens = 0
+    const dailyTrend: Record<string, { tokens: number, cost: number, count: number }> = {}
+    const modelStats: Record<string, number> = {}
 
     for (const g of gens) {
       // Type breakdown
@@ -1229,6 +1241,22 @@ app.get('/api/admin/analytics/popularity', async (c) => {
       const uid = g.userId?.stringValue
       if (uid) {
         userCounts[uid] = (userCounts[uid] || 0) + 1
+      }
+
+      // Model distribution
+      const model = g.model?.stringValue || 'gemini-2.5-flash-image'
+      modelStats[model] = (modelStats[model] || 0) + 1
+
+      // Financials & Trends
+      const tokens = parseInt(g.tokens?.integerValue || '0')
+      totalTokens += tokens
+
+      const dateKey = g.createdAt?.timestampValue ? g.createdAt.timestampValue.split('T')[0] : 'Unknown'
+      if (dateKey !== 'Unknown') {
+        if (!dailyTrend[dateKey]) dailyTrend[dateKey] = { tokens: 0, cost: 0, count: 0 }
+        dailyTrend[dateKey].tokens += tokens
+        dailyTrend[dateKey].count += 1
+        dailyTrend[dateKey].cost += tokens * 0.0000005
       }
     }
 
@@ -1253,11 +1281,29 @@ app.get('/api/admin/analytics/popularity', async (c) => {
         })
     )
 
+    // Format usage trend
+    const trend = Object.entries(dailyTrend)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, stats]) => ({ date, ...stats }))
+
     return c.json({
       status: 'success',
       generationTypes: typeStats,
-      topPresets,
-      powerUsers
+      topPresets: Object.entries(presetCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([id, count]) => ({
+          id,
+          name: presetNames[id] || `ID: ${id.substring(0, 8)}...`,
+          count
+        })),
+      powerUsers,
+      modelStats,
+      financials: {
+        totalTokens,
+        totalEstimatedCost: totalTokens * 0.0000005
+      },
+      trend
     })
   } catch (e: any) {
     console.error("Popularity Analytics Error", e)
