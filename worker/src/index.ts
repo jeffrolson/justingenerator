@@ -1141,6 +1141,112 @@ app.get('/api/admin/users/:id/generations', async (c) => {
   }
 })
 
+// Analytics: User Details & Interaction
+app.get('/api/admin/analytics/users/:id', async (c) => {
+  const firebase = c.get('firebase')
+  const userId = c.req.param('id')
+
+  try {
+    const [userDoc, gensRes, loginsRes] = await Promise.all([
+      firebase.firestore('GET', `users/${userId}`),
+      firebase.query('generations', {
+        where: { fieldFilter: { field: { fieldPath: 'userId' }, op: 'EQUAL', value: { stringValue: userId } } },
+        limit: 1000
+      }),
+      firebase.query('events', {
+        where: {
+          compositeFilter: {
+            op: 'AND',
+            filters: [
+              { fieldFilter: { field: { fieldPath: 'userId' }, op: 'EQUAL', value: { stringValue: userId } } },
+              { fieldFilter: { field: { fieldPath: 'eventType' }, op: 'EQUAL', value: { stringValue: 'user_login' } } }
+            ]
+          }
+        },
+        limit: 1000
+      })
+    ])
+
+    if (!userDoc) return c.json({ error: 'User not found' }, 404)
+
+    const gens = gensRes as any[]
+    const logins = loginsRes as any[]
+
+    const stats = {
+      totalLogins: logins.length,
+      totalGenerations: gens.length,
+      types: {
+        remix: gens.filter(g => g.remixFrom?.stringValue).length,
+        preset: gens.filter(g => g.storedPromptId?.stringValue && !g.remixFrom?.stringValue).length,
+        custom: gens.filter(g => !g.storedPromptId?.stringValue && !g.remixFrom?.stringValue).length
+      },
+      lastActive: gens.length > 0 ? gens[0].createdAt?.timestampValue : (logins.length > 0 ? logins[0].timestamp?.timestampValue : null)
+    }
+
+    return c.json({ status: 'success', stats })
+  } catch (e: any) {
+    console.error("User Analytics Error", e)
+    return c.json({ error: e.message }, 500)
+  }
+})
+
+// Analytics: Global Generation Popularity
+app.get('/api/admin/analytics/popularity', async (c) => {
+  const firebase = c.get('firebase')
+
+  try {
+    // Fetch last 1000 generations to measure recent popularity
+    const gens = await firebase.query('generations', {
+      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+      limit: 1000
+    }) as any[]
+
+    const typeStats = { remix: 0, preset: 0, custom: 0 }
+    const presetCounts: Record<string, number> = {}
+    const userCounts: Record<string, number> = {}
+
+    for (const g of gens) {
+      // Type breakdown
+      if (g.remixFrom?.stringValue) typeStats.remix++
+      else if (g.storedPromptId?.stringValue) typeStats.preset++
+      else typeStats.custom++
+
+      // Preset popularity
+      if (g.storedPromptId?.stringValue) {
+        presetCounts[g.storedPromptId.stringValue] = (presetCounts[g.storedPromptId.stringValue] || 0) + 1
+      }
+
+      // Power users
+      const uid = g.userId?.stringValue
+      if (uid) {
+        userCounts[uid] = (userCounts[uid] || 0) + 1
+      }
+    }
+
+    // Format top presets
+    const topPresets = Object.entries(presetCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([id, count]) => ({ id, count }))
+
+    // Format top users
+    const topUsers = Object.entries(userCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([id, count]) => ({ id, count }))
+
+    return c.json({
+      status: 'success',
+      generationTypes: typeStats,
+      topPresets,
+      powerUsers: topUsers
+    })
+  } catch (e: any) {
+    console.error("Popularity Analytics Error", e)
+    return c.json({ error: e.message }, 500)
+  }
+})
+
 // Delete user
 app.delete('/api/admin/users/:id', async (c) => {
   const firebase = c.get('firebase')

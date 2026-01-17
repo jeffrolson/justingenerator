@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Search, Trash2, ArrowUp, ArrowDown, History, X, ExternalLink, Shield, ShieldAlert, RefreshCw } from 'lucide-react';
+import { Search, Trash2, ArrowUp, ArrowDown, History, X, ExternalLink, Shield, ShieldAlert, RefreshCw, BarChart2, LogIn, Image as ImageIcon, Sparkles } from 'lucide-react';
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
+    PieChart, Pie, Cell
+} from 'recharts';
 
 export function UserManager() {
     const { getToken } = useAuth();
@@ -12,6 +16,9 @@ export function UserManager() {
     const [selectedUser, setSelectedUser] = useState(null);
     const [userGenerations, setUserGenerations] = useState([]);
     const [loadingGenerations, setLoadingGenerations] = useState(false);
+    const [insightUser, setInsightUser] = useState(null);
+    const [userStats, setUserStats] = useState(null);
+    const [loadingStats, setLoadingStats] = useState(false);
 
     const fetchUsers = async () => {
         try {
@@ -119,6 +126,25 @@ export function UserManager() {
         const debounce = setTimeout(fetchUsers, 500);
         return () => clearTimeout(debounce);
     }, [search, sortField, sortOrder]);
+
+    const handleViewInsights = async (user) => {
+        setInsightUser(user);
+        setLoadingStats(true);
+        try {
+            const token = await getToken();
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/analytics/users/${user.id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                setUserStats(data.stats);
+            }
+        } catch (e) {
+            console.error("Failed to fetch user insights", e);
+        } finally {
+            setLoadingStats(false);
+        }
+    };
 
     return (
         <div className="max-w-[1600px] mx-auto text-white">
@@ -238,22 +264,29 @@ export function UserManager() {
                                     <td className="p-4 text-xs text-gray-400">
                                         {user.createdAt ? new Date(user.createdAt).toLocaleString() : <span className="text-gray-600 italic">Unknown</span>}
                                     </td>
-                                    <td className="p-4 text-right">
-                                        <div className="flex items-center justify-end gap-2">
+                                    <td className="py-4 px-4 text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <button
+                                                onClick={() => handleViewInsights(user)}
+                                                className="p-2 text-violet-400 hover:bg-violet-500/10 rounded-lg transition-colors"
+                                                title="View User Insights"
+                                            >
+                                                <BarChart2 size={18} />
+                                            </button>
                                             <button
                                                 onClick={() => {
                                                     setSelectedUser(user);
                                                     fetchUserGenerations(user.id);
                                                 }}
-                                                className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"
+                                                className="p-2 text-gray-400 hover:bg-white/5 rounded-lg transition-colors"
                                                 title="View History"
                                             >
                                                 <History size={18} />
                                             </button>
                                             <button
                                                 onClick={() => handleToggleRole(user)}
-                                                className={`p-2 transition-colors ${user.role === 'admin' ? 'text-violet-400 hover:text-gray-400' : 'text-gray-400 hover:text-violet-400'}`}
-                                                title={user.role === 'admin' ? "Demote to User" : "Promote to Admin"}
+                                                className={`p-2 rounded-lg transition-colors ${user.role === 'admin' ? 'text-amber-400 hover:bg-amber-500/10' : 'text-gray-400 hover:bg-white/5'}`}
+                                                title={user.role === 'admin' ? 'Revoke Admin' : 'Make Admin'}
                                             >
                                                 {user.role === 'admin' ? <ShieldAlert size={18} /> : <Shield size={18} />}
                                             </button>

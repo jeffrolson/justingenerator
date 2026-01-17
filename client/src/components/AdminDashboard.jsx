@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, Users, Image as ImageIcon, Settings, LogOut, ArrowLeft, Menu, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Users, Image as ImageIcon, Settings, LogOut, ArrowLeft, Menu, X, ChevronLeft, ChevronRight, BarChart2 } from 'lucide-react';
 import { Overview } from './admin/Overview';
 import { UserManager } from './admin/UserManager';
 import { PromptManager } from './admin/PromptManager';
 import { Settings as SettingsComponent } from './admin/Settings';
+import { Analytics } from './admin/Analytics';
 
 export function AdminDashboard() {
     const { user, backendUser, logout } = useAuth();
@@ -14,6 +15,7 @@ export function AdminDashboard() {
 
     const menuItems = [
         { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+        { id: 'analytics', label: 'Analytics', icon: BarChart2 },
         { id: 'users', label: 'Users', icon: Users },
         { id: 'content', label: 'Templates', icon: ImageIcon },
         { id: 'settings', label: 'Settings', icon: Settings },
@@ -22,6 +24,7 @@ export function AdminDashboard() {
     const renderContent = () => {
         switch (activeTab) {
             case 'overview': return <Overview />;
+            case 'analytics': return <Analytics />;
             case 'users': return <UserManager />;
             case 'content': return <PromptManager />;
             case 'settings': return <SettingsComponent />;
