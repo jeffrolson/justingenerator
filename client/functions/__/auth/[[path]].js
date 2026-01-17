@@ -11,8 +11,7 @@ export async function onRequest(context) {
     const proxyRequest = new Request(targetUrl, {
         method: request.method,
         headers: request.headers,
-        body: request.body,
-        redirect: 'manual' // Ensure we handle redirects through the proxy if necessary
+        body: request.body
     });
 
     try {
