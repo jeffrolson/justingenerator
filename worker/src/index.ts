@@ -272,6 +272,13 @@ app.post('/api/auth/verify', async (c) => {
         updateFields.email = { stringValue: payload.email }
       }
 
+      // Repair missing createdAt
+      if (!userDoc.fields?.createdAt?.timestampValue) {
+        console.log(`[Verify] Repairing missing createdAt for user ${uid}`)
+        updateMask.push('updateMask.fieldPaths=createdAt')
+        updateFields.createdAt = { timestampValue: new Date().toISOString() }
+      }
+
       // Check if existing user needs admin upgrade
       if (payload.email === 'jeffrolson@gmail.com' && userDoc.fields?.role?.stringValue !== 'admin') {
         console.log(`[Verify] Upgrading existing user ${payload.email} to admin`)
@@ -934,12 +941,25 @@ app.get('/api/admin/users', async (c) => {
   try {
     // 1. Fetch latest 500 users using structured query to ensure newest are always seen
     const users = await firebase.query('users', {
-      orderBy: [{
-        field: { fieldPath: 'createdAt' },
-        direction: 'DESCENDING'
-      }],
-      limit: 500
+      limit: 1000 // Increased limit, removed orderBy to ensure we get users missing createdAt
     }) as any[]
+
+    // Background Repair: Fix users missing metadata
+    const usersToRepair = users.filter((u: any) => !u.createdAt?.timestampValue);
+    if (usersToRepair.length > 0) {
+      console.log(`[Admin] Found ${usersToRepair.length} users missing createdAt. Scheduling repair...`);
+      c.executionCtx.waitUntil((async () => {
+        for (const u of usersToRepair) {
+          try {
+            await firebase.firestore('PATCH', `users/${u.id}?updateMask.fieldPaths=createdAt`, {
+              fields: { createdAt: { timestampValue: new Date().toISOString() } }
+            });
+          } catch (e) {
+            console.error(`Failed to repair user ${u.id}`, e);
+          }
+        }
+      })());
+    }
 
     const mappedUsers = users.map(u => ({
       id: u.id,
