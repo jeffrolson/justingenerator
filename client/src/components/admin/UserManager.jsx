@@ -112,6 +112,12 @@ export function UserManager() {
                     </div>
                     <div className="flex gap-2 w-full md:w-auto">
                         <button
+                            onClick={() => alert('CLICKS ARE WORKING!')}
+                            className="px-4 py-2 bg-rose-500/20 border border-rose-500/40 rounded-xl text-rose-300 font-bold hover:bg-rose-500/30 transition-all shrink-0"
+                        >
+                            DEBUG ALERT
+                        </button>
+                        <button
                             onClick={fetchUsers}
                             className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-all"
                             title="Refresh List"

@@ -34,7 +34,7 @@ export function AdminDashboard() {
             {/* Mobile Overlay */}
             {isMobileMenuOpen && (
                 <div
-                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden"
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 md:hidden"
                     onClick={() => setIsMobileMenuOpen(false)}
                 />
             )}
@@ -124,7 +124,7 @@ export function AdminDashboard() {
             </aside>
 
             {/* Main Content */}
-            <main className={`flex-1 min-h-screen transition-all duration-300 ${isCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
+            <main className={`flex-1 min-h-screen transition-all duration-300 relative z-10 ${isCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
                 <header className="h-14 border-b border-white/10 bg-black/20 backdrop-blur-md sticky top-0 z-20 px-4 md:px-6 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <button

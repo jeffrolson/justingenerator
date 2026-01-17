@@ -166,16 +166,17 @@ function AppContent() {
     return <Dashboard initialRemix={remixItem} onClearRemix={() => setRemixItem(null)} />;
   }
 
-  // Default fallback to Explore (guest view)
-  return <ExploreFeed onRemix={(item) => setRemixItem(item)} />;
+  return (
+    <div className={`min-h-screen ${currentPath.startsWith('/admin') ? 'bg-[#0a0a0a]' : 'app-background'}`}>
+      <ExploreFeed onRemix={(item) => setRemixItem(item)} />
+    </div>
+  );
 }
 
 function App() {
   return (
     <AuthProvider>
-      <div className="min-h-screen app-background">
-        <AppContent />
-      </div>
+      <AppContent />
     </AuthProvider>
   );
 }
