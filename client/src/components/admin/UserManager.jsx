@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Search, Trash2, ArrowUp, ArrowDown, History, X, ExternalLink } from 'lucide-react';
+import { Search, Trash2, ArrowUp, ArrowDown, History, X, ExternalLink, Shield, ShieldAlert } from 'lucide-react';
 
 export function UserManager() {
     const { getToken } = useAuth();
@@ -47,6 +47,37 @@ export function UserManager() {
             console.error("Failed to fetch generations", e);
         } finally {
             setLoadingGenerations(false);
+        }
+    };
+
+    const handleToggleRole = async (user) => {
+        const newRole = user.role === 'admin' ? 'user' : 'admin';
+        const confirmMsg = user.role === 'admin'
+            ? `Are you sure you want to demote ${user.name || user.email} to a regular user?`
+            : `Are you sure you want to promote ${user.name || user.email} to an admin?`;
+
+        if (!window.confirm(confirmMsg)) return;
+
+        try {
+            const token = await getToken();
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/${user.id}/role`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ role: newRole })
+            });
+
+            if (res.ok) {
+                setUsers(users.map(u => u.id === user.id ? { ...u, role: newRole } : u));
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to update role');
+            }
+        } catch (e) {
+            console.error("Failed to toggle role", e);
+            alert('An error occurred while updating the role');
         }
     };
 
@@ -159,6 +190,13 @@ export function UserManager() {
                                                 title="View History"
                                             >
                                                 <History size={18} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleToggleRole(user)}
+                                                className={`p-2 transition-colors ${user.role === 'admin' ? 'text-violet-400 hover:text-gray-400' : 'text-gray-400 hover:text-violet-400'}`}
+                                                title={user.role === 'admin' ? "Demote to User" : "Promote to Admin"}
+                                            >
+                                                {user.role === 'admin' ? <ShieldAlert size={18} /> : <Shield size={18} />}
                                             </button>
                                             <button
                                                 onClick={async () => {

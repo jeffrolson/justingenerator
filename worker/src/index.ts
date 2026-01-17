@@ -1026,6 +1026,26 @@ app.delete('/api/admin/users/:id', async (c) => {
   }
 })
 
+// Update user role
+app.patch('/api/admin/users/:id/role', async (c) => {
+  const firebase = c.get('firebase')
+  const id = c.req.param('id')
+  const { role } = await c.req.json()
+
+  if (!['admin', 'user'].includes(role)) {
+    return c.json({ error: 'Invalid role' }, 400)
+  }
+
+  try {
+    await firebase.firestore('PATCH', `users/${id}?updateMask.fieldPaths=role`, {
+      fields: { role: { stringValue: role } }
+    })
+    return c.json({ status: 'success' })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+})
+
 // List all stored prompts
 app.get('/api/admin/prompts', async (c) => {
   const firebase = c.get('firebase')
