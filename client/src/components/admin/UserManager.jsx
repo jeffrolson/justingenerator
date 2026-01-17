@@ -113,6 +113,35 @@ export function UserManager() {
         }
     };
 
+    const handleUpdateCredits = async (user) => {
+        const newCredits = window.prompt(`Enter new credit balance for ${user.name || user.email}:`, user.credits);
+        if (newCredits === null) return;
+        const creditsInt = parseInt(newCredits);
+        if (isNaN(creditsInt)) return alert("Please enter a valid number");
+
+        try {
+            const token = await getToken();
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/${user.id}/credits`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ credits: creditsInt })
+            });
+
+            if (res.ok) {
+                setUsers(users.map(u => u.id === user.id ? { ...u, credits: creditsInt } : u));
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to update credits');
+            }
+        } catch (e) {
+            console.error("Failed to update credits", e);
+            alert('An error occurred while updating credits');
+        }
+    };
+
     const toggleSort = (field) => {
         if (sortField === field) {
             setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC');
@@ -189,6 +218,7 @@ export function UserManager() {
                             <option value="credits">Credits</option>
                             <option value="generationsCount">Generations</option>
                             <option value="totalSpent">Total Spent</option>
+                            <option value="lastLogin">Last Login</option>
                         </select>
                     </div>
                 </div>
@@ -228,6 +258,11 @@ export function UserManager() {
                                     Joined {sortField === 'createdAt' && (sortOrder === 'ASC' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
                                 </div>
                             </th>
+                            <th className="p-4 cursor-pointer hover:text-white transition-colors" onClick={() => toggleSort('lastLogin')}>
+                                <div className="flex items-center gap-2">
+                                    Last Login {sortField === 'lastLogin' && (sortOrder === 'ASC' ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
+                                </div>
+                            </th>
                             <th className="p-4 text-right">Actions</th>
                         </tr>
                     </thead>
@@ -250,7 +285,18 @@ export function UserManager() {
                                             {user.role}
                                         </span>
                                     </td>
-                                    <td className="p-4 font-mono">{user.credits}</td>
+                                    <td className="p-4 font-mono group relative">
+                                        <div className="flex items-center gap-2">
+                                            {user.credits}
+                                            <button
+                                                onClick={() => handleUpdateCredits(user)}
+                                                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded transition-all text-violet-400"
+                                                title="Adjust Credits"
+                                            >
+                                                <Sparkles size={12} />
+                                            </button>
+                                        </div>
+                                    </td>
                                     <td
                                         className="p-4 font-mono text-center cursor-pointer hover:text-violet-400 underline underline-offset-4 decoration-white/10"
                                         onClick={() => {
@@ -263,6 +309,9 @@ export function UserManager() {
                                     <td className="p-4 font-mono text-green-400">${(user.totalSpent || 0).toFixed(2)}</td>
                                     <td className="p-4 text-xs text-gray-400">
                                         {user.createdAt ? new Date(user.createdAt).toLocaleString() : <span className="text-gray-600 italic">Unknown</span>}
+                                    </td>
+                                    <td className="p-4 text-xs text-gray-400">
+                                        {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : <span className="text-gray-600 italic">Never</span>}
                                     </td>
                                     <td className="py-4 px-4 text-right">
                                         <div className="flex justify-end gap-2">

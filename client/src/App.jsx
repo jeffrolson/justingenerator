@@ -21,6 +21,15 @@ function AppContent() {
       setCurrentPath(window.location.pathname);
     };
     window.addEventListener('popstate', handlePopState);
+
+    // Capture referral code
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref) {
+      sessionStorage.setItem('referralCode', ref);
+      console.log('Referral code captured:', ref);
+    }
+
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 

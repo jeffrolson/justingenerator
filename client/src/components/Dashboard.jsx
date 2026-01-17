@@ -52,6 +52,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTag, setActiveTag] = useState(null);
     const [features, setFeatures] = useState({ dailyRewards: true, referrals: true });
+    const [referralCredits, setReferralCredits] = useState(5);
     const [previewUrl, setPreviewUrl] = useState(null);
     const [showSettings, setShowSettings] = useState(false);
     const { theme, setTheme } = useTheme();
@@ -74,8 +75,9 @@ export function Dashboard({ initialRemix, onClearRemix }) {
         fetch(`${apiUrl}/api/public/config`)
             .then(res => res.json())
             .then(data => {
-                if (data.status === 'success' && data.features) {
-                    setFeatures(data.features);
+                if (data.status === 'success') {
+                    if (data.features) setFeatures(data.features);
+                    if (data.referralCredits) setReferralCredits(data.referralCredits);
                 }
             })
             .catch(err => console.error("Failed to load config:", err));
@@ -508,7 +510,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                 </div>
                                 <div>
                                     <h4 className="text-white font-bold text-sm">Invite Friends</h4>
-                                    <p className="text-slate-400 text-xs text-nowrap">Get 5 credits for every referral</p>
+                                    <p className="text-slate-400 text-xs text-nowrap">Get {referralCredits} credits for every referral</p>
                                 </div>
                             </div>
                             <button

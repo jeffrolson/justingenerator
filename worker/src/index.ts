@@ -154,7 +154,7 @@ app.post('/api/auth/verify', async (c) => {
     return c.json({ error: "Failed to parse request JSON", details: { raw: await c.req.text() } }, 400)
   }
 
-  const { token } = body
+  const { token, referrer } = body
   const firebase = c.get('firebase')
 
   console.log(`[Verify] Starting for project: ${firebase.projectId}`)
@@ -217,11 +217,57 @@ app.post('/api/auth/verify', async (c) => {
             name: { stringValue: displayName },
             firstName: { stringValue: fName },
             lastName: { stringValue: lName },
-            credits: { integerValue: 5 }, // Free 5 credits
+            credits: { integerValue: 5 }, // Default signup credits
             role: isAdmin ? { stringValue: 'admin' } : { stringValue: 'user' },
-            createdAt: { timestampValue: new Date().toISOString() }
+            createdAt: { timestampValue: new Date().toISOString() },
+            lastLogin: { timestampValue: new Date().toISOString() }
           }
         })
+
+        // Handle Referrals if user were successfully created
+        if (userDoc && referrer && referrer !== uid) {
+          try {
+            const settingsDoc: any = await firebase.firestore('GET', 'settings/config').catch(() => null)
+            const referralsEnabled = settingsDoc?.fields?.featureFlags?.mapValue?.fields?.referrals?.booleanValue ?? true
+            const referralAmount = parseInt(settingsDoc?.fields?.referralCredits?.integerValue || '5')
+
+            if (referralsEnabled) {
+              console.log(`[Verify] Applying referral from ${referrer} to ${uid}`)
+
+              // 1. Grant credits to referrer
+              const referrerDoc: any = await firebase.firestore('GET', `users/${referrer}`).catch(() => null);
+              if (referrerDoc) {
+                const currentReferrerCredits = parseInt(referrerDoc.fields?.credits?.integerValue || '0');
+                await firebase.firestore('PATCH', `users/${referrer}?updateMask.fieldPaths=credits`, {
+                  fields: {
+                    credits: { integerValue: currentReferrerCredits + referralAmount }
+                  }
+                }).catch((err: any) => console.error(`[Verify] Failed to grant referral credits to ${referrer}:`, err.message))
+              }
+
+              // 2. Grant credits to the new user (the referee)
+              const currentRefereeCredits = parseInt(userDoc.fields?.credits?.integerValue || '5');
+              userDoc = await firebase.firestore('PATCH', `users/${uid}?updateMask.fieldPaths=credits&updateMask.fieldPaths=referredBy`, {
+                fields: {
+                  credits: { integerValue: currentRefereeCredits + referralAmount },
+                  referredBy: { stringValue: referrer }
+                }
+              })
+
+              // 3. Track the referral
+              await firebase.firestore('POST', 'referrals', {
+                fields: {
+                  referrerId: { stringValue: referrer },
+                  referredId: { stringValue: uid },
+                  amount: { integerValue: referralAmount },
+                  timestamp: { timestampValue: new Date().toISOString() }
+                }
+              }).catch((err: any) => console.error(`[Verify] Failed to log referral:`, err.message))
+            }
+          } catch (re) {
+            console.error(`[Verify] Referral logic failed:`, re)
+          }
+        }
 
         if (!userDoc) {
           console.error(`[Verify] PATCH returned null for users/${uid}`)
@@ -263,8 +309,10 @@ app.post('/api/auth/verify', async (c) => {
       const currentEmail = userDoc.fields?.email?.stringValue
       const currentName = userDoc.fields?.name?.stringValue
 
-      const updateMask = []
-      const updateFields: any = {}
+      const updateMask = ['updateMask.fieldPaths=lastLogin']
+      const updateFields: any = {
+        lastLogin: { timestampValue: new Date().toISOString() }
+      }
 
       if (!currentEmail && payload.email) {
         console.log(`[Verify] Repairing missing email for user ${uid}`)
@@ -991,7 +1039,9 @@ app.get('/api/admin/users', async (c) => {
       credits: parseInt(u.credits?.integerValue || '0'),
       generationsCount: parseInt(u.generationsCount?.integerValue || '0'),
       totalSpent: parseFloat(u.totalSpent?.doubleValue || '0'),
-      createdAt: u.createdAt?.timestampValue
+      createdAt: u.createdAt?.timestampValue,
+      lastLogin: u.lastLogin?.timestampValue,
+      referredBy: u.referredBy?.stringValue
     }))
 
     // 2. Filter based on search query if provided
@@ -1344,6 +1394,42 @@ app.patch('/api/admin/users/:id/role', async (c) => {
   }
 })
 
+// Update Credits
+app.patch('/api/admin/users/:id/credits', async (c) => {
+  const firebase = c.get('firebase')
+  const id = c.req.param('id')
+  const { credits } = await c.req.json()
+
+  try {
+    await firebase.firestore('PATCH', `users/${id}?updateMask.fieldPaths=credits`, {
+      fields: { credits: { integerValue: credits } }
+    })
+    return c.json({ status: 'success' })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+})
+
+// Get Referrals
+app.get('/api/admin/referrals', async (c) => {
+  const firebase = c.get('firebase')
+  try {
+    const refs = await firebase.query('referrals', { limit: 1000 })
+    return c.json({
+      status: 'success',
+      referrals: refs.map((r: any) => ({
+        id: r.id,
+        referrerId: r.referrerId?.stringValue,
+        referredId: r.referredId?.stringValue,
+        amount: parseInt(r.amount?.integerValue || '0'),
+        timestamp: r.timestamp?.timestampValue
+      }))
+    })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+})
+
 // List all stored prompts
 app.get('/api/admin/prompts', async (c) => {
   const firebase = c.get('firebase')
@@ -1440,7 +1526,9 @@ app.get('/api/admin/settings', async (c) => {
       dailyRewards: doc?.fields?.featureFlags?.mapValue?.fields?.dailyRewards?.booleanValue ?? true,
       referrals: doc?.fields?.featureFlags?.mapValue?.fields?.referrals?.booleanValue ?? true
     }
-    return c.json({ status: 'success', settings: { imageModel: model, telegram, featureFlags } })
+    const referralCredits = parseInt(doc?.fields?.referralCredits?.integerValue || '5')
+
+    return c.json({ status: 'success', settings: { imageModel: model, telegram, featureFlags, referralCredits } })
   } catch (e: any) {
     return c.json({ error: e.message }, 500)
   }
@@ -1450,7 +1538,8 @@ app.get('/api/admin/settings', async (c) => {
 // Update Settings
 app.post('/api/admin/settings', async (c) => {
   const firebase = c.get('firebase')
-  const { imageModel, telegram, featureFlags } = await c.req.json() as { imageModel?: string, telegram?: any, featureFlags?: any }
+  const body = await c.req.json() as any
+  const { imageModel, telegram, featureFlags, referralCredits } = body
 
   try {
     const fields: any = {
@@ -1481,6 +1570,10 @@ app.post('/api/admin/settings', async (c) => {
           }
         }
       }
+    }
+
+    if (body.referralCredits !== undefined) {
+      fields.referralCredits = { integerValue: body.referralCredits }
     }
 
     await firebase.firestore('PATCH', 'settings/config', { fields })
@@ -2003,13 +2096,13 @@ app.get('/api/public/config', async (c) => {
     // We cache this heavily in a real app, here we rely on KV or simple reads
     const doc: any = await firebase.firestore('GET', 'settings/config').catch(() => null)
 
-    // Default features to true if not set
     const features = {
       dailyRewards: doc?.fields?.featureFlags?.mapValue?.fields?.dailyRewards?.booleanValue ?? true,
       referrals: doc?.fields?.featureFlags?.mapValue?.fields?.referrals?.booleanValue ?? true
     }
+    const referralCredits = parseInt(doc?.fields?.referralCredits?.integerValue || '5')
 
-    return c.json({ status: 'success', features })
+    return c.json({ status: 'success', features, referralCredits })
   } catch (e) {
     // If fail, default to enabled to not break UI
     return c.json({

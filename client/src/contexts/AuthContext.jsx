@@ -37,7 +37,8 @@ export function AuthProvider({ children }) {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             token,
-                            displayName: firebaseUser.displayName
+                            displayName: firebaseUser.displayName,
+                            referrer: sessionStorage.getItem('referralCode')
                         })
                     });
 
@@ -79,7 +80,12 @@ export function AuthProvider({ children }) {
             await fetch(`${apiUrl}/api/auth/verify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token, firstName, lastName })
+                body: JSON.stringify({
+                    token,
+                    firstName,
+                    lastName,
+                    referrer: sessionStorage.getItem('referralCode')
+                })
             });
         } catch (e) {
             console.error("Manual sync during registration failed:", e);
