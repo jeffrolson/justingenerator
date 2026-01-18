@@ -2088,17 +2088,26 @@ app.get('/api/public/share/:id', async (c) => {
     return c.json({ error: 'Generation not found or not public' }, 404)
   }
 
+  // Increment views in background
+  const currentViews = parseInt(gen.fields?.views?.integerValue || '0')
+  firebase.firestore('PATCH', `generations/${id}`, {
+    fields: {
+      views: { integerValue: (currentViews + 1).toString() }
+    }
+  }).catch(e => console.error("Failed to increment views:", e))
+
   return c.json({
     status: 'success',
     generation: {
       id,
-      summary: gen.fields?.summary?.stringValue || gen.fields?.prompt?.stringValue?.substring(0, 30),
-      prompt: gen.fields?.prompt?.stringValue,
+      summary: gen.fields?.summary?.stringValue || 'AI Masterpiece',
+      // Hide prompt for privacy as requested by user
       imageUrl: `/api/public/image/${encodeURIComponent(gen.fields?.resultPath?.stringValue)}`,
       createdAt: gen.fields?.createdAt?.timestampValue,
       votes: parseInt(gen.fields?.votes?.integerValue || '0'),
       likesCount: parseInt(gen.fields?.likesCount?.integerValue || '0'),
       bookmarksCount: parseInt(gen.fields?.bookmarksCount?.integerValue || '0'),
+      views: currentViews + 1,
       resultPath: gen.fields?.resultPath?.stringValue
     }
   })

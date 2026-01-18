@@ -21,6 +21,7 @@ import {
     Heart,
     Bookmark,
     Layers,
+    Share,
     Settings,
     Search,
     User,
@@ -868,9 +869,10 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                         return (
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-fade-in">
                                 {filtered.map((item) => (
-                                    <div key={item.id} className="group flex flex-col space-y-3">
+                                    <div key={item.id} className="group flex flex-col">
+                                        {/* Image Container */}
                                         <div
-                                            className="relative aspect-[3/4] glass-card p-1 cursor-pointer overflow-hidden rounded-2xl border-white/5 hover:border-violet-500/30 transition-all duration-500 shadow-lg group-hover:shadow-violet-500/10"
+                                            className="relative aspect-[3/4] glass-card p-1 cursor-pointer overflow-hidden rounded-2xl border-white/5 group-hover:border-violet-500/30 transition-all duration-500 shadow-lg group-hover:shadow-violet-500/10"
                                             onClick={() => {
                                                 setPreviewImage(getImageUrl(item.imageUrl, apiUrl));
                                                 setShowFullSize(true);
@@ -879,27 +881,13 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                             <img
                                                 src={getImageUrl(item.imageUrl, apiUrl, 400)}
                                                 alt={item.prompt}
-                                                className="w-full h-full object-cover rounded-xl transition-transform duration-700 group-hover:scale-105"
+                                                className="w-full h-full object-cover rounded-xl transition-transform duration-700 group-hover:scale-110"
                                                 loading="lazy"
                                                 decoding="async"
                                             />
 
-                                            {/* Quick Actions Overlay - Always visible on mobile, hover on desktop */}
-                                            <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleInteraction('like', item); }}
-                                                    className={`p-2 rounded-full backdrop-blur-md border transition-all hover:scale-110 ${item.isLiked ? 'bg-rose-500/20 border-rose-500/50 text-rose-400' : 'bg-black/40 border-white/10 text-white/70 hover:text-rose-400'}`}
-                                                    title="Like"
-                                                >
-                                                    <Heart className={`w-4 h-4 ${item.isLiked ? 'fill-rose-500' : ''}`} />
-                                                </button>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleInteraction('bookmark', item); }}
-                                                    className={`p-2 rounded-full backdrop-blur-md border transition-all hover:scale-110 ${item.isBookmarked ? 'bg-amber-500/20 border-amber-500/50 text-amber-400' : 'bg-black/40 border-white/10 text-white/70 hover:text-amber-400'}`}
-                                                    title="Bookmark"
-                                                >
-                                                    <Bookmark className={`w-4 h-4 ${item.isBookmarked ? 'fill-amber-500' : ''}`} />
-                                                </button>
+                                            {/* Top Overlay Actions (Remix) */}
+                                            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); setRemixSource(item); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                                                     className="p-2 rounded-full backdrop-blur-md border border-white/10 bg-black/40 text-white/70 hover:text-white hover:bg-violet-600/50 transition-all hover:scale-110"
@@ -907,58 +895,100 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                                 >
                                                     <Layers className="w-4 h-4" />
                                                 </button>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleShare(item); }}
-                                                    className={`p-2 rounded-full backdrop-blur-md border transition-all hover:scale-110 ${item.isPublic ? 'bg-violet-500/20 border-violet-500/50 text-violet-200' : 'bg-black/40 border-white/10 text-white/70 hover:text-white'}`}
-                                                    title={item.isPublic ? "Share Settings" : "Make Public & Share"}
-                                                >
-                                                    <Share2 className="w-4 h-4" />
-                                                </button>
                                             </div>
                                         </div>
 
-                                        <div className="px-1 flex items-center justify-between gap-3">
-                                            <div className="flex-grow min-w-0">
-                                                <h4 className="text-sm font-bold text-white truncate group-hover:text-violet-300 transition-colors">
-                                                    {item.summary || "Masterpiece"}
-                                                </h4>
-                                                <div className="flex flex-wrap gap-1 mt-1">
-                                                    {item.tags?.slice(0, 2).map(tag => (
+                                        {/* Bottom Action Row */}
+                                        <div className="px-2 pt-1">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="flex-grow min-w-0">
+                                                    <h4 className="text-sm font-bold text-white truncate transition-colors group-hover:text-violet-300">
+                                                        {item.summary || "Masterpiece"}
+                                                    </h4>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleInteraction('like', item); }}
+                                                        className={`p-2 rounded-xl transition-all hover:scale-110 ${item.isLiked ? 'bg-rose-500/10 text-rose-500' : 'text-slate-500 hover:text-rose-500 hover:bg-rose-500/5'}`}
+                                                        title="Like"
+                                                    >
+                                                        <Heart className={`w-4 h-4 ${item.isLiked ? 'fill-rose-500' : ''}`} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleInteraction('bookmark', item); }}
+                                                        className={`p-2 rounded-xl transition-all hover:scale-110 ${item.isBookmarked ? 'bg-amber-500/10 text-amber-500' : 'text-slate-500 hover:text-amber-500 hover:bg-amber-500/5'}`}
+                                                        title="Bookmark"
+                                                    >
+                                                        <Bookmark className={`w-4 h-4 ${item.isBookmarked ? 'fill-amber-500' : ''}`} />
+                                                    </button>
+
+                                                    <div className="relative">
                                                         <button
-                                                            key={tag}
-                                                            onClick={(e) => { e.stopPropagation(); setActiveTag(tag); }}
-                                                            className="text-[9px] font-bold text-violet-300 hover:text-white px-1.5 py-0.5 bg-violet-500/10 rounded border border-violet-500/20 transition-colors uppercase"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (sharingItem?.id === item.id) {
+                                                                    setSharingItem(null);
+                                                                } else {
+                                                                    setSharingItem(item);
+                                                                }
+                                                            }}
+                                                            className={`p-2 rounded-xl transition-all hover:scale-110 ${item.isPublic ? 'bg-violet-500/10 text-violet-400' : 'text-slate-500 hover:text-violet-400 hover:bg-violet-500/5'}`}
+                                                            title="Share"
                                                         >
-                                                            {tag}
+                                                            <Share2 className="w-4 h-4" />
                                                         </button>
-                                                    ))}
+
+                                                        {sharingItem?.id === item.id && (
+                                                            <div className="absolute bottom-full right-0 mb-2 w-48 bg-theme-bg-accent border border-theme-glass-border rounded-xl shadow-2xl backdrop-blur-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        const url = `${window.location.origin}/share/${item.id}`;
+                                                                        navigator.clipboard.writeText(url);
+                                                                        alert("Link copied!");
+                                                                        setSharingItem(null);
+                                                                    }}
+                                                                    className="w-full px-4 py-3 flex items-center gap-3 text-xs font-bold text-theme-text-primary hover:bg-white/5 transition-colors text-left"
+                                                                >
+                                                                    <Share className="w-4 h-4 text-violet-400" /> Copy Link
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        const url = `${window.location.origin}/share/${item.id}`;
+                                                                        const text = "Check out my AI masterpiece!";
+                                                                        if (navigator.share) {
+                                                                            navigator.share({ title: "Justin Generator", text, url });
+                                                                        } else {
+                                                                            navigator.clipboard.writeText(url);
+                                                                            alert("Link copied!");
+                                                                        }
+                                                                        setSharingItem(null);
+                                                                    }}
+                                                                    className="w-full px-4 py-3 flex items-center gap-3 text-xs font-bold text-theme-text-primary hover:bg-white/5 transition-colors text-left border-t border-theme-glass-border"
+                                                                >
+                                                                    <ExternalLink className="w-4 h-4 text-violet-400" /> Share via...
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="flex items-center gap-1 bg-theme-bg-accent rounded-full p-1 border border-theme-glass-border">
-                                                    <button
-                                                        onClick={() => handleVote(item.id, 'up')}
-                                                        className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-green-400"
-                                                    >
-                                                        <ThumbsUp className="w-3.5 h-3.5" />
-                                                    </button>
-                                                    <span className="text-[10px] font-bold text-slate-300 min-w-[12px] text-center">
+
+                                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold">
+                                                        <ThumbsUp className="w-3 h-3" />
                                                         {item.votes || 0}
-                                                    </span>
-                                                    <button
-                                                        onClick={() => handleVote(item.id, 'down')}
-                                                        className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-red-400"
-                                                    >
-                                                        <ThumbsDown className="w-3.5 h-3.5" />
-                                                    </button>
+                                                    </div>
                                                 </div>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleShare(item); }}
-                                                    className="p-2.5 bg-violet-600/10 hover:bg-violet-600/20 text-violet-400 rounded-full border border-violet-500/20 transition-all hover:scale-110 active:scale-95 shadow-lg shadow-violet-500/5 group/share"
-                                                    title="Share Masterpiece"
-                                                >
-                                                    <Share2 className="w-4 h-4 transition-transform group-hover/share:rotate-12" />
-                                                </button>
+                                                <div className="flex gap-1">
+                                                    {item.tags?.slice(0, 1).map(tag => (
+                                                        <span key={tag} className="text-[8px] font-black text-violet-400/60 uppercase tracking-widest px-1.5 py-0.5 bg-violet-500/5 rounded border border-violet-500/10">
+                                                            {tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
