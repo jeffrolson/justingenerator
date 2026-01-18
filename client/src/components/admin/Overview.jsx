@@ -138,7 +138,9 @@ export function Overview() {
                 {[
                     { label: 'Analytics', href: 'https://analytics.google.com/', icon: TrendingUp, color: 'text-orange-500', bg: 'bg-orange-500/10' },
                     { label: 'GCP Console', href: 'https://console.cloud.google.com/', icon: Cloud, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-                    { label: 'Cloudflare', href: 'https://dash.cloudflare.com/', icon: Globe, color: 'text-orange-400', bg: 'bg-orange-400/10' }
+                    { label: 'Cloudflare', href: 'https://dash.cloudflare.com/', icon: Globe, color: 'text-orange-400', bg: 'bg-orange-400/10' },
+                    { label: 'GitHub', href: 'https://github.com/jeffrolson/justingenerator', icon: Globe, color: 'text-slate-400', bg: 'bg-white/5' },
+                    { label: 'Stripe', href: 'https://dashboard.stripe.com/', icon: DollarSign, color: 'text-indigo-400', bg: 'bg-indigo-400/10' }
                 ].map(tool => (
                     <a
                         key={tool.label}

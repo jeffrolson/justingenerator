@@ -911,11 +911,14 @@ app.get('/api/admin/kpis', async (c) => {
       return c.json({ status: 'success', kpis, charts: { growth: chartData } })
     }
 
-    // 1. Determine Date Range (Existing 7d+ logic)
+    // 1. Determine Date Range (7d, 30d, 90d, all)
     let days = 7
     if (range === '30d') days = 30
     if (range === '90d') days = 90
     if (range === 'all') days = 365
+
+    const now = new Date()
+    const rawStartTime = new Date(now.getTime() - (days * 24 * 3600 * 1000)).toISOString()
 
     const dates = [...Array(days)].map((_, i) => {
       const d = new Date()
@@ -924,14 +927,31 @@ app.get('/api/admin/kpis', async (c) => {
     }).reverse()
 
     // 2. Fetch all-time stats for "Overall" metrics
-    const allStatsRes: any = await firebase.query('daily_stats', {
-      orderBy: [{ field: { fieldPath: 'date' }, direction: 'ASCENDING' }]
-    }) as any[]
+    // Also fetch raw events/gens for the ENTIRE range to get an accurate UNIQUE active users count (not avg)
+    const [allStatsRes, rangeEvents, rangeGens] = await Promise.all([
+      firebase.query('daily_stats', {
+        orderBy: [{ field: { fieldPath: 'date' }, direction: 'ASCENDING' }]
+      }),
+      firebase.query('events', {
+        where: { fieldFilter: { field: { fieldPath: 'timestamp' }, op: 'GREATER_THAN_OR_EQUAL', value: { timestampValue: rawStartTime } } },
+        limit: 10000
+      }),
+      firebase.query('generations', {
+        where: { fieldFilter: { field: { fieldPath: 'createdAt' }, op: 'GREATER_THAN_OR_EQUAL', value: { timestampValue: rawStartTime } } },
+        limit: 10000
+      })
+    ]) as [any[], any[], any[]]
 
     const allTimeDocs = allStatsRes || []
     const totalTokensAllTime = allTimeDocs.reduce((acc: number, d: any) => acc + parseInt(d.totalTokens?.integerValue || '0'), 0)
     const totalRevenueAllTime = allTimeDocs.reduce((acc: number, d: any) => acc + parseFloat(d.revenue?.doubleValue || '0'), 0)
     const totalCostAllTime = allTimeDocs.reduce((acc: number, d: any) => acc + (parseInt(d.totalTokens?.integerValue || '0') / 1000000) * 0.50, 0)
+
+    // Calculate REAL Unique Active Users for the entire range
+    const uniqueRangeUsers = new Set([
+      ...(rangeEvents || []).map((e: any) => e.userId?.stringValue).filter(Boolean),
+      ...(rangeGens || []).map((g: any) => g.userId?.stringValue).filter(Boolean)
+    ]).size
 
     // 3. Fetch range-specific docs
     let docs: any[] = []
@@ -990,7 +1010,7 @@ app.get('/api/admin/kpis', async (c) => {
     const prevDay = stats[stats.length - 2] || currentDay
 
     const kpis = {
-      activeUsers: { value: avgDAU, label: 'Avg Daily Users', trend: calcTrend(currentDay.activeUsers, prevDay.activeUsers) },
+      activeUsers: { value: uniqueRangeUsers, label: 'Active Users', trend: calcTrend(currentDay.activeUsers, prevDay.activeUsers) },
       revenue: { value: totalRevenueRange.toFixed(2), label: 'Total Revenue', trend: calcTrend(currentDay.revenue, prevDay.revenue) },
       newUsers: { value: totalNewUsersRange, label: 'New Signups', trend: calcTrend(currentDay.newUsers, prevDay.newUsers) },
       tokens: { value: (totalTokensRange / 1000000).toFixed(2) + 'M', label: 'Tokens Used', trend: calcTrend(currentDay.totalTokens, prevDay.totalTokens) },
