@@ -1634,8 +1634,20 @@ app.get('/api/admin/settings', async (c) => {
       referrals: doc?.fields?.featureFlags?.mapValue?.fields?.referrals?.booleanValue ?? true
     }
     const referralCredits = parseInt(doc?.fields?.referralCredits?.integerValue || '5')
+    const platformLinks = doc?.fields?.platformLinks?.arrayValue?.values?.map((v: any) => ({
+      label: v.mapValue?.fields?.label?.stringValue,
+      href: v.mapValue?.fields?.href?.stringValue,
+      icon: v.mapValue?.fields?.icon?.stringValue || 'Globe',
+      color: v.mapValue?.fields?.color?.stringValue || 'text-orange-500'
+    })) || [
+        { label: 'Analytics', href: 'https://analytics.google.com/', icon: 'TrendingUp', color: 'text-orange-500' },
+        { label: 'GCP Console', href: 'https://console.cloud.google.com/', icon: 'Cloud', color: 'text-blue-500' },
+        { label: 'Cloudflare', href: 'https://dash.cloudflare.com/', icon: 'Globe', color: 'text-orange-400' },
+        { label: 'GitHub', href: 'https://github.com/jeffrolson/justingenerator', icon: 'Globe', color: 'text-slate-400' },
+        { label: 'Stripe', href: 'https://dashboard.stripe.com/', icon: 'DollarSign', color: 'text-indigo-400' }
+      ]
 
-    return c.json({ status: 'success', settings: { imageModel: model, telegram, featureFlags, referralCredits } })
+    return c.json({ status: 'success', settings: { imageModel: model, telegram, featureFlags, referralCredits, platformLinks } })
   } catch (e: any) {
     return c.json({ error: e.message }, 500)
   }
@@ -1646,7 +1658,7 @@ app.get('/api/admin/settings', async (c) => {
 app.post('/api/admin/settings', async (c) => {
   const firebase = c.get('firebase')
   const body = await c.req.json() as any
-  const { imageModel, telegram, featureFlags, referralCredits } = body
+  const { imageModel, telegram, featureFlags, referralCredits, platformLinks } = body
 
   try {
     const fields: any = {
@@ -1681,6 +1693,23 @@ app.post('/api/admin/settings', async (c) => {
 
     if (body.referralCredits !== undefined) {
       fields.referralCredits = { integerValue: body.referralCredits }
+    }
+
+    if (platformLinks) {
+      fields.platformLinks = {
+        arrayValue: {
+          values: platformLinks.map((l: any) => ({
+            mapValue: {
+              fields: {
+                label: { stringValue: l.label },
+                href: { stringValue: l.href },
+                icon: { stringValue: l.icon || 'Globe' },
+                color: { stringValue: l.color || 'text-orange-500' }
+              }
+            }
+          }))
+        }
+      }
     }
 
     await firebase.firestore('PATCH', 'settings/config', { fields })

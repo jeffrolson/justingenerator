@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area } from 'recharts';
-import { TrendingUp, Users, DollarSign, Activity, AlertCircle, Zap, Wallet, Calendar, ExternalLink, Cloud, Globe } from 'lucide-react';
+import { TrendingUp, Users, DollarSign, Activity, AlertCircle, Zap, Wallet, Calendar, ExternalLink, Cloud, Globe, Trash2, Edit2, X } from 'lucide-react';
 
 const KPICard = ({ title, value, trend, icon: Icon, color, label }) => (
     <div className="bg-theme-bg-secondary/50 border border-theme-glass-border rounded-lg p-4 backdrop-blur-sm hover:bg-theme-glass-bg transition-colors">
@@ -71,9 +71,32 @@ export function Overview() {
         }
     };
 
-    useEffect(() => {
-        loadData();
-    }, [range]);
+    const [showLinkManager, setShowLinkManager] = useState(false);
+    const [editingLink, setEditingLink] = useState(null);
+    const [saveLoading, setSaveLoading] = useState(false);
+
+    const handleSaveLinks = async (updatedLinks) => {
+        setSaveLoading(true);
+        try {
+            const token = await getToken();
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/settings`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ platformLinks: updatedLinks })
+            });
+            if (res.ok) {
+                setPlatformLinks(updatedLinks);
+                setShowLinkManager(false);
+            }
+        } catch (e) {
+            console.error("Failed to save links", e);
+        } finally {
+            setSaveLoading(false);
+        }
+    };
 
     if (loading && !data) return (
         <div className="flex flex-col items-center justify-center min-h-[400px] text-theme-text-primary">
@@ -95,66 +118,137 @@ export function Overview() {
     const { kpis, charts } = data;
 
     return (
-        <div className={`space-y-6 max-w-[1600px] mx-auto transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-            {loading && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-[2px]">
-                    <div className="bg-[#1a1a1a] border border-white/10 p-4 rounded-xl shadow-2xl flex items-center gap-3">
-                        <Activity size={20} className="animate-spin text-indigo-500" />
-                        <span className="text-white font-medium">Updating...</span>
+        <div className={`relative space-y-6 max-w-[1600px] mx-auto transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+            {/* Link Manager Modal */}
+            {showLinkManager && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+                    <div className="bg-[#111] border border-white/10 p-6 rounded-3xl shadow-2xl max-w-2xl w-full space-y-6 overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-bold">Manage Platform Links</h3>
+                                <p className="text-theme-text-muted text-xs mt-1">Add or edit external tools displayed on the dashboard.</p>
+                            </div>
+                            <button onClick={() => setShowLinkManager(false)} className="p-2 hover:bg-white/5 rounded-full transition-colors text-theme-text-muted hover:text-white">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+                            {platformLinks.map((link, index) => (
+                                <div key={index} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center gap-4 group">
+                                    <div className={`p-2 rounded bg-opacity-20 ${link.color.replace('text-', 'bg-')}`}>
+                                        {(() => {
+                                            const Icon = IconMap[link.icon] || Globe;
+                                            return <div className={link.color}><Icon size={18} /></div>;
+                                        })()}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-bold text-sm">{link.label}</div>
+                                        <div className="text-[10px] text-theme-text-muted truncate">{link.href}</div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setEditingLink({ ...link, index })}
+                                            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-theme-text-muted hover:text-white"
+                                        >
+                                            <Edit2 size={14} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleSaveLinks(platformLinks.filter((_, i) => i !== index))}
+                                            className="p-2 hover:bg-red-500/10 rounded-lg transition-colors text-red-500/60 hover:text-red-500"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+
+                            {!editingLink && (
+                                <button
+                                    onClick={() => setEditingLink({ label: '', href: '', icon: 'Globe', color: 'text-orange-500', isNew: true })}
+                                    className="w-full py-4 border-2 border-dashed border-white/10 rounded-2xl text-theme-text-muted hover:border-violet-500/40 hover:text-violet-400 transition-all flex flex-col items-center justify-center gap-2"
+                                >
+                                    <Zap size={20} />
+                                    <span className="text-xs font-bold uppercase tracking-widest">Add New Link</span>
+                                </button>
+                            )}
+                        </div>
+
+                        {editingLink && (
+                            <div className="bg-theme-bg-secondary border border-theme-glass-border p-5 rounded-3xl space-y-4 animate-in slide-in-from-bottom-4">
+                                <h4 className="font-bold text-sm text-violet-400 uppercase tracking-widest">
+                                    {editingLink.isNew ? 'Create New Link' : 'Edit Link'}
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-theme-text-muted uppercase tracking-widest px-1">Label</label>
+                                        <input
+                                            type="text"
+                                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-violet-500 transition-colors"
+                                            value={editingLink.label}
+                                            onChange={e => setEditingLink({ ...editingLink, label: e.target.value })}
+                                            placeholder="e.g. Analytics"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-theme-text-muted uppercase tracking-widest px-1">Icon ID</label>
+                                        <select
+                                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-violet-500 transition-colors"
+                                            value={editingLink.icon}
+                                            onChange={e => setEditingLink({ ...editingLink, icon: e.target.value })}
+                                        >
+                                            {Object.keys(IconMap).map(icon => (
+                                                <option key={icon} value={icon}>{icon}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-theme-text-muted uppercase tracking-widest px-1">Destination URL</label>
+                                    <input
+                                        type="text"
+                                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-violet-500 transition-colors"
+                                        value={editingLink.href}
+                                        onChange={e => setEditingLink({ ...editingLink, href: e.target.value })}
+                                        placeholder="https://..."
+                                    />
+                                </div>
+                                <div className="flex gap-2 justify-end pt-2">
+                                    <button onClick={() => setEditingLink(null)} className="px-4 py-2 text-xs font-bold text-theme-text-muted hover:text-white transition-colors">Cancel</button>
+                                    <button
+                                        onClick={() => {
+                                            const newList = [...platformLinks];
+                                            if (editingLink.isNew) {
+                                                const { isNew, ...linkData } = editingLink;
+                                                newList.push(linkData);
+                                            } else {
+                                                const { index, ...linkData } = editingLink;
+                                                newList[index] = linkData;
+                                            }
+                                            handleSaveLinks(newList);
+                                            setEditingLink(null);
+                                        }}
+                                        className="px-6 py-2 bg-violet-600 rounded-xl text-xs font-bold text-white hover:bg-violet-500 transition-colors"
+                                    >
+                                        Apply Changes
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {!editingLink && (
+                            <div className="flex justify-end pt-2">
+                                <button
+                                    onClick={() => setShowLinkManager(false)}
+                                    className="px-6 py-2 bg-white/5 border border-white/10 rounded-xl text-xs font-bold text-white hover:bg-white/10 transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
-            {/* Controls */}
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-white">Platform Overview</h2>
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={handleSync}
-                        disabled={syncing}
-                        className={`px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2 ${syncing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                        <Activity size={16} className={syncing ? 'animate-spin' : ''} />
-                        {syncing ? 'Syncing...' : 'Sync Data'}
-                    </button>
-                    <div className="flex bg-theme-bg-secondary p-1 rounded-lg border border-theme-border">
-                        {['1h', '6h', '12h', '1d', '7d', '30d', '90d', 'all'].map((r) => (
-                            <button
-                                key={r}
-                                onClick={() => setRange(r)}
-                                className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${range === r
-                                    ? 'bg-theme-primary text-white shadow-sm'
-                                    : 'text-theme-text-muted hover:text-theme-text-primary'
-                                    }`}
-                            >
-                                {r.toUpperCase()}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* External Tools - Compact */}
-            <div className="flex flex-wrap gap-2">
-                {[
-                    { label: 'Analytics', href: 'https://analytics.google.com/', icon: TrendingUp, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-                    { label: 'GCP Console', href: 'https://console.cloud.google.com/', icon: Cloud, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-                    { label: 'Cloudflare', href: 'https://dash.cloudflare.com/', icon: Globe, color: 'text-orange-400', bg: 'bg-orange-400/10' },
-                    { label: 'GitHub', href: 'https://github.com/jeffrolson/justingenerator', icon: Globe, color: 'text-slate-400', bg: 'bg-white/5' },
-                    { label: 'Stripe', href: 'https://dashboard.stripe.com/', icon: DollarSign, color: 'text-indigo-400', bg: 'bg-indigo-400/10' }
-                ].map(tool => (
-                    <a
-                        key={tool.label}
-                        href={tool.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-3 py-1.5 rounded bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
-                    >
-                        <tool.icon size={14} className={tool.color} />
-                        <span className="text-xs font-medium text-gray-300 group-hover:text-white">{tool.label}</span>
-                        <ExternalLink size={10} className="text-gray-600" />
-                    </a>
-                ))}
-            </div>
 
             {/* KPI Grid - High Density */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
