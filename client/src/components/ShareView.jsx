@@ -137,7 +137,7 @@ export function ShareView({ genId }) {
                         <div className="absolute top-6 right-6 flex flex-col gap-3">
                             <button
                                 onClick={handleDownload}
-                                className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-xl rounded-2xl border border-white/20 text-white transition-all hover:scale-110 active:scale-95 group/btn shadow-xl"
+                                className="p-4 bg-theme-glass-bg hover:bg-theme-bg-accent backdrop-blur-xl rounded-2xl border border-theme-glass-border text-theme-text-primary transition-all hover:scale-110 active:scale-95 group/btn shadow-xl"
                                 title="Download Masterpiece"
                             >
                                 <Download className="w-6 h-6 group-hover/btn:rotate-12 transition-transform" />
@@ -145,7 +145,7 @@ export function ShareView({ genId }) {
                             <div className="relative">
                                 <button
                                     onClick={() => setShowShareMenu(!showShareMenu)}
-                                    className="p-4 bg-violet-600/20 hover:bg-violet-600/30 backdrop-blur-xl rounded-2xl border border-violet-500/30 text-white transition-all hover:scale-110 active:scale-95 group/btn shadow-xl"
+                                    className="p-4 bg-violet-600/10 hover:bg-violet-600/20 backdrop-blur-xl rounded-2xl border border-violet-500/30 text-violet-500 transition-all hover:scale-110 active:scale-95 group/btn shadow-xl"
                                     title="Share Masterpiece"
                                 >
                                     <Share2 className="w-6 h-6 group-hover/cta:scale-110 transition-transform" />

@@ -109,12 +109,12 @@ export function ExploreFeed({ onRemix }) {
                         { step: "2", title: "Upload Photo", desc: "Upload a selfie or clear photo of yourself." },
                         { step: "3", title: "Get Your Art", desc: "Our AI generates a new portrait of you in that style!" }
                     ].map((item, i) => (
-                        <div key={i} className="flex flex-col items-center space-y-2 p-4 rounded-2xl bg-[var(--glass-bg)] border border-[var(--glass-border)]">
+                        <div key={i} className="flex flex-col items-center space-y-2 p-4 rounded-2xl bg-theme-glass-bg border border-theme-glass-border">
                             <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-violet-600/20">
                                 {item.step}
                             </div>
-                            <h4 className="text-[var(--text-primary)] font-bold text-sm">{item.title}</h4>
-                            <p className="text-[var(--text-secondary)] text-xs leading-relaxed">{item.desc}</p>
+                            <h4 className="text-theme-text-primary font-bold text-sm">{item.title}</h4>
+                            <p className="text-theme-text-secondary text-xs leading-relaxed">{item.desc}</p>
                         </div>
                     ))}
                 </div>
@@ -124,7 +124,7 @@ export function ExploreFeed({ onRemix }) {
                 {feed.map((item) => (
                     <div
                         key={item.id}
-                        className="group relative aspect-[3/4] rounded-2xl overflow-hidden bg-gray-900 border border-white/5 hover:border-violet-500/50 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-violet-500/20"
+                        className="group relative aspect-[3/4] rounded-2xl overflow-hidden bg-theme-bg-accent border border-theme-glass-border hover:border-violet-500/50 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-violet-500/20"
                     >
                         <img
                             src={getImageUrl(item.imageUrl, apiUrl, 400)}

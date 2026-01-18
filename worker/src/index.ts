@@ -427,7 +427,7 @@ app.post('/api/generate', async (c) => {
   if (!isPro && (now.getTime() - lastResetDate.getTime() > 30 * 24 * 60 * 60 * 1000)) {
     if (credits < 5) {
       credits = 5
-      c.executionCtx.waitUntil(firebase.firestore('PATCH', `users/${user.sub}`, {
+      c.executionCtx.waitUntil(firebase.firestore('PATCH', `users/${user.sub}?updateMask.fieldPaths=credits&updateMask.fieldPaths=lastCreditReset`, {
         fields: {
           credits: { integerValue: 5 },
           lastCreditReset: { timestampValue: now.toISOString() }
@@ -1600,7 +1600,7 @@ app.post('/api/admin/prompts', async (c) => {
   })
 
   // Create Firestore Doc
-  await firebase.firestore('PATCH', `stored_prompts/${promptId}`, {
+  await firebase.firestore('PATCH', `stored_prompts/${promptId}?updateMask.fieldPaths=name&updateMask.fieldPaths=prompt&updateMask.fieldPaths=order`, {
     fields: {
       name: { stringValue: name },
       prompt: { stringValue: prompt },
@@ -1712,7 +1712,7 @@ app.post('/api/admin/settings', async (c) => {
       }
     }
 
-    await firebase.firestore('PATCH', 'settings/config', { fields })
+    await firebase.firestore('PATCH', 'settings/config?updateMask.fieldPaths=discoveryFee&updateMask.fieldPaths=referralCredit&updateMask.fieldPaths=platformLinks&updateMask.fieldPaths=telegram', { fields })
     return c.json({ status: 'success' })
   } catch (e: any) {
     return c.json({ error: e.message }, 500)
@@ -1799,7 +1799,7 @@ app.post('/api/admin/branding', async (c) => {
       }
     }
 
-    await firebase.firestore('PATCH', 'settings/branding', { fields })
+    await firebase.firestore('PATCH', 'settings/branding?updateMask.fieldPaths=logo&updateMask.fieldPaths=favicon&updateMask.fieldPaths=colors&updateMask.fieldPaths=typography&updateMask.fieldPaths=currentProfile', { fields })
     return c.json({ status: 'success' })
   } catch (e: any) {
     return c.json({ error: e.message }, 500)
@@ -2112,11 +2112,12 @@ app.get('/api/generations', async (c) => {
   const user = c.get('user')
   const firebase = c.get('firebase')
   const filter = c.req.query('filter') || 'my' // 'my', 'likes', 'bookmarks'
+  const source = c.req.query('source') || 'personal' // 'personal', 'gallery'
   const tag = c.req.query('tag')
   const q = c.req.query('q')
 
   try {
-    // 1. Fetch user's likes and bookmarks IDs first (useful for flags and for filtering)
+    // 1. Fetch user's likes and bookmarks IDs first
     const [likesRes, bookmarksRes]: any[] = await Promise.all([
       firebase.firestore('GET', `users/${user.sub}/likes`).catch(() => ({ documents: [] })),
       firebase.firestore('GET', `users/${user.sub}/bookmarks`).catch(() => ({ documents: [] }))
@@ -2131,14 +2132,11 @@ app.get('/api/generations', async (c) => {
       results = await firebase.query('generations', {
         where: { fieldFilter: { field: { fieldPath: 'userId' }, op: 'EQUAL', value: { stringValue: user.sub } } }
       });
-      // Filter for completed items
-      results = results.filter((g: any) => g.status?.stringValue === 'completed');
     } else {
       // Filter by 'likes' or 'bookmarks'
       const targetIds = Array.from(filter === 'likes' ? likedIds : bookmarkedIds);
 
       if (targetIds.length > 0) {
-        // Chunk into groups of 30 for Firestore 'IN' limit
         const chunks = [];
         for (let i = 0; i < targetIds.length; i += 30) {
           chunks.push(targetIds.slice(i, i + 30));
@@ -2167,7 +2165,17 @@ app.get('/api/generations', async (c) => {
       }
     }
 
-    // 2. In-memory Filter (Tag and Search Query)
+    // 2. Filter for completed items (for 'my' and general safety)
+    results = results.filter((g: any) => g.status?.stringValue === 'completed' || !g.status);
+
+    // 3. Source Filter
+    if (source === 'personal') {
+      results = results.filter((g: any) => g.userId?.stringValue === user.sub);
+    } else if (source === 'gallery') {
+      results = results.filter((g: any) => g.userId?.stringValue !== user.sub);
+    }
+
+    // 4. In-memory Filter (Tag and Search Query)
     if (tag) {
       const lowerTag = tag.toLowerCase();
       results = results.filter((g: any) =>
@@ -2301,7 +2309,7 @@ app.get('/api/public/share/:id', async (c) => {
 
   // Increment views in background
   const currentViews = parseInt(gen.fields?.views?.integerValue || '0')
-  firebase.firestore('PATCH', `generations/${id}`, {
+  firebase.firestore('PATCH', `generations/${id}?updateMask.fieldPaths=views`, {
     fields: {
       views: { integerValue: (currentViews + 1).toString() }
     }
@@ -2563,7 +2571,7 @@ app.post('/api/stripe/webhook', async (c) => {
           const current = parseInt(userDoc.fields?.credits?.integerValue || '0')
           const currentSpent = parseFloat(userDoc.fields?.totalSpent?.doubleValue || '0')
 
-          await firebase.firestore('PATCH', `users/${userId}`, {
+          await firebase.firestore('PATCH', `users/${userId}?updateMask.fieldPaths=subscriptionStatus&updateMask.fieldPaths=subscriptionEnd`, {
             fields: {
               credits: { integerValue: current + 10 },
               totalSpent: { doubleValue: currentSpent + (session.amount_total / 100) }
@@ -2612,7 +2620,7 @@ app.post('/api/stripe/webhook', async (c) => {
           const userDoc: any = await firebase.firestore('GET', `users/${userId}`)
           const currentSpent = parseFloat(userDoc.fields?.totalSpent?.doubleValue || '0')
 
-          await firebase.firestore('PATCH', `users/${userId}`, {
+          await firebase.firestore('PATCH', `users/${userId}?updateMask.fieldPaths=subscriptionStatus&updateMask.fieldPaths=subscriptionEnd`, {
             fields: {
               subscriptionStatus: { stringValue: 'active' },
               subscriptionEnd: { timestampValue: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() },

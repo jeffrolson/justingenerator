@@ -56,6 +56,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
     const [referralCredits, setReferralCredits] = useState(5);
     const [previewUrl, setPreviewUrl] = useState(null);
     const [showSettings, setShowSettings] = useState(false);
+    const [source, setSource] = useState('personal'); // 'personal', 'gallery'
     const { theme, setTheme } = useTheme();
 
     // Handle File Preview
@@ -107,12 +108,12 @@ export function Dashboard({ initialRemix, onClearRemix }) {
         }
     };
 
-    const fetchHistory = async (filter = activeTab, tag = activeTag) => {
+    const fetchHistory = async (filter = activeTab, tag = activeTag, contentSource = source) => {
         if (!user) return;
         setLoadingHistory(true);
         try {
             const token = await user.getIdToken();
-            let url = `${apiUrl}/api/generations?filter=${filter}`;
+            let url = `${apiUrl}/api/generations?filter=${filter}&source=${contentSource}`;
             if (tag) url += `&tag=${encodeURIComponent(tag)}`;
             const res = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -133,8 +134,8 @@ export function Dashboard({ initialRemix, onClearRemix }) {
     }, []);
 
     useEffect(() => {
-        fetchHistory(activeTab, activeTag);
-    }, [user, activeTab, activeTag]);
+        fetchHistory(activeTab, activeTag, source);
+    }, [user, activeTab, activeTag, source]);
 
     // Handle incoming remix from Explore
     useEffect(() => {
@@ -550,7 +551,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
 
                             {remixSource ? (
                                 <div className="p-4 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex gap-4 items-center animate-fade-in-up">
-                                    <div className="w-16 h-16 rounded-lg overflow-hidden border border-white/10 shrink-0">
+                                    <div className="w-16 h-16 rounded-lg overflow-hidden border border-theme-glass-border shrink-0">
                                         <img
                                             src={getImageUrl(remixSource.imageUrl, apiUrl)}
                                             alt="Remix Source"
@@ -562,11 +563,11 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                         />
                                     </div>
                                     <div className="flex-grow">
-                                        <p className="text-sm font-bold text-violet-300">Selected Style</p>
+                                        <p className="text-sm font-bold text-violet-400">Selected Style</p>
                                     </div>
                                     <button
                                         onClick={() => { setRemixSource(null); onClearRemix?.(); }}
-                                        className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white"
+                                        className="p-2 hover:bg-theme-glass-bg rounded-full transition-colors text-theme-text-muted hover:text-theme-text-primary"
                                     >
                                         <X className="w-5 h-5" />
                                     </button>
@@ -578,7 +579,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                             <button
                                                 key={preset.id}
                                                 onClick={() => setSelectedPresetId(preset.id)}
-                                                className={`group relative aspect-[4/3] rounded-xl overflow-hidden border-2 transition-all ${selectedPresetId === preset.id ? 'border-violet-500 ring-2 ring-violet-500/50' : 'border-white/5 hover:border-white/20'}`}
+                                                className={`group relative aspect-[4/3] rounded-xl overflow-hidden border-2 transition-all ${selectedPresetId === preset.id ? 'border-violet-500 ring-2 ring-violet-500/50' : 'border-theme-glass-border hover:border-theme-text-muted'}`}
                                             >
                                                 <img src={getImageUrl(preset.sampleUrl, apiUrl, 200)} alt={preset.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" loading="lazy" decoding="async" />
                                                 <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity ${selectedPresetId === preset.id ? 'opacity-100' : 'opacity-60 group-hover:opacity-80'}`}></div>
@@ -678,11 +679,11 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-end">
                                         <div className="space-y-1">
-                                            <h4 className="text-xl font-bold text-white flex items-center gap-2">
+                                            <h4 className="text-xl font-bold text-theme-text-primary flex items-center gap-2">
                                                 <span className="w-2 h-2 bg-violet-500 rounded-full animate-ping"></span>
                                                 Batch Generation
                                             </h4>
-                                            <p className="text-slate-400 text-sm">Processing your masterpiece collection</p>
+                                            <p className="text-theme-text-secondary text-sm">Processing your masterpiece collection</p>
                                         </div>
                                         <span className="text-violet-400 font-bold text-2xl">
                                             {Math.round((activeJob.completed / activeJob.total) * 100)}%
@@ -765,17 +766,56 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-center text-slate-600 space-y-4 relative z-10">
+                            <div className="text-center space-y-4 relative z-10">
                                 <div className="p-8 rounded-full bg-theme-bg-accent inline-flex backdrop-blur-xl border border-theme-glass-border shimmer">
-                                    <ImageIcon className="w-16 h-16 opacity-30" />
+                                    <ImageIcon className="w-16 h-16 opacity-30 text-theme-text-primary" />
                                 </div>
-                                <p className="text-slate-500 font-medium">Your masterpiece will appear here</p>
+                                <p className="text-theme-text-secondary font-medium">Your masterpiece will appear here</p>
                             </div>
                         )}
                     </section>
                 </main>
 
-                <section className="mt-16 space-y-8 pb-12">
+                {/* Recent Generations Row */}
+                {!loadingHistory && history.length > 0 && source === 'personal' && (
+                    <section className="mt-12 space-y-4 animate-fade-in">
+                        <div className="flex justify-between items-center px-2">
+                            <h3 className="text-lg font-bold text-theme-text-primary flex items-center gap-2">
+                                <Sparkles className="w-4 h-4 text-violet-500" />
+                                Recently Generated
+                            </h3>
+                            <button
+                                onClick={() => {
+                                    const gallery = document.getElementById('gallery-section');
+                                    if (gallery) gallery.scrollIntoView({ behavior: 'smooth' });
+                                }}
+                                className="text-xs font-bold text-violet-500 hover:text-violet-400 uppercase tracking-wider"
+                            >
+                                View All
+                            </button>
+                        </div>
+                        <div className="flex gap-4 overflow-x-auto pb-6 custom-scrollbar px-2 snap-x">
+                            {history.slice(0, 10).map((item) => (
+                                <div
+                                    key={item.id}
+                                    className="flex-shrink-0 w-32 md:w-40 aspect-[3/4] rounded-xl overflow-hidden glass-card p-1 group cursor-pointer snap-start"
+                                    onClick={() => {
+                                        setPreviewImage(getImageUrl(item.imageUrl, apiUrl));
+                                        setShowFullSize(true);
+                                    }}
+                                >
+                                    <img
+                                        src={getImageUrl(item.imageUrl, apiUrl, 400)}
+                                        className="w-full h-full object-cover rounded-lg group-hover:scale-110 transition-transform duration-500"
+                                        loading="lazy"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                <section id="gallery-section" className="mt-16 space-y-8 pb-12">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div className="flex items-center gap-6">
                             <div className="flex items-center gap-3">
@@ -806,23 +846,33 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                             </div>
                         </div>
 
-                        <div className="flex flex-wrap gap-2 items-center">
-                            {activeTag && (
-                                <div className="flex items-center gap-2 bg-violet-600/20 text-violet-300 px-3 py-1 rounded-full border border-violet-500/30 text-xs font-bold animate-fade-in">
-                                    Tag: {activeTag}
-                                    <button onClick={() => setActiveTag(null)} className="hover:text-white">
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </div>
-                            )}
-                            <div className="flex bg-theme-bg-accent p-1 rounded-xl border border-white/10">
+                        <div className="flex flex-wrap gap-4 items-center">
+                            {/* Source Toggle */}
+                            <div className="flex bg-theme-bg-accent p-1 rounded-xl border border-theme-glass-border">
+                                <button
+                                    onClick={() => setSource('personal')}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${source === 'personal' ? 'bg-violet-600 text-white shadow-lg' : 'text-theme-text-muted hover:text-theme-text-secondary'}`}
+                                >
+                                    <User className="w-3.5 h-3.5" />
+                                    Personal
+                                </button>
+                                <button
+                                    onClick={() => setSource('gallery')}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${source === 'gallery' ? 'bg-violet-600 text-white shadow-lg' : 'text-theme-text-muted hover:text-theme-text-secondary'}`}
+                                >
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    Gallery
+                                </button>
+                            </div>
+
+                            <div className="flex bg-theme-bg-accent p-1 rounded-xl border border-theme-glass-border">
                                 {['my', 'likes', 'bookmarks'].map((tab) => (
                                     <button
                                         key={tab}
                                         onClick={() => setActiveTab(tab)}
-                                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === tab ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20' : 'text-slate-400 hover:text-white'}`}
+                                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === tab ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20' : 'text-theme-text-muted hover:text-theme-text-primary'}`}
                                     >
-                                        {tab === 'my' ? 'My Creations' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                        {tab === 'my' ? 'Creations' : tab.charAt(0).toUpperCase() + tab.slice(1)}
                                     </button>
                                 ))}
                             </div>
@@ -850,10 +900,10 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                             return (
                                 <div className="text-center py-20 animate-fade-in">
                                     <div className="p-6 rounded-3xl bg-theme-bg-accent border border-theme-glass-border inline-block backdrop-blur-xl mb-4">
-                                        <ImageIcon className="w-12 h-12 text-slate-700 mx-auto" />
+                                        <ImageIcon className="w-12 h-12 text-theme-text-muted mx-auto" />
                                     </div>
-                                    <h4 className="text-white font-bold text-lg">No results found</h4>
-                                    <p className="text-slate-500">Try adjusting your search or filters</p>
+                                    <h4 className="text-theme-text-primary font-bold text-lg">No results found</h4>
+                                    <p className="text-theme-text-secondary">Try adjusting your search or filters</p>
                                     {searchQuery && (
                                         <button
                                             onClick={() => setSearchQuery('')}
@@ -902,21 +952,21 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                         <div className="px-2 pt-1">
                                             <div className="flex items-center justify-between gap-3">
                                                 <div className="flex-grow min-w-0">
-                                                    <h4 className="text-sm font-bold text-white truncate transition-colors group-hover:text-violet-300">
+                                                    <h4 className="text-sm font-bold text-theme-text-primary truncate transition-colors group-hover:text-violet-500">
                                                         {item.summary || "Masterpiece"}
                                                     </h4>
                                                 </div>
                                                 <div className="flex items-center gap-1.5 shrink-0">
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleInteraction('like', item); }}
-                                                        className={`p-2 rounded-xl transition-all hover:scale-110 ${item.isLiked ? 'bg-rose-500/10 text-rose-500' : 'text-slate-500 hover:text-rose-500 hover:bg-rose-500/5'}`}
+                                                        className={`p-2 rounded-xl transition-all hover:scale-110 ${item.isLiked ? 'bg-rose-500/10 text-rose-500' : 'text-theme-text-muted hover:text-rose-500 hover:bg-rose-500/5'}`}
                                                         title="Like"
                                                     >
                                                         <Heart className={`w-4 h-4 ${item.isLiked ? 'fill-rose-500' : ''}`} />
                                                     </button>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleInteraction('bookmark', item); }}
-                                                        className={`p-2 rounded-xl transition-all hover:scale-110 ${item.isBookmarked ? 'bg-amber-500/10 text-amber-500' : 'text-slate-500 hover:text-amber-500 hover:bg-amber-500/5'}`}
+                                                        className={`p-2 rounded-xl transition-all hover:scale-110 ${item.isBookmarked ? 'bg-amber-500/10 text-amber-500' : 'text-theme-text-muted hover:text-amber-500 hover:bg-amber-500/5'}`}
                                                         title="Bookmark"
                                                     >
                                                         <Bookmark className={`w-4 h-4 ${item.isBookmarked ? 'fill-amber-500' : ''}`} />
@@ -932,7 +982,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                                                     setSharingItem(item);
                                                                 }
                                                             }}
-                                                            className={`p-2 rounded-xl transition-all hover:scale-110 ${item.isPublic ? 'bg-violet-500/10 text-violet-400' : 'text-slate-500 hover:text-violet-400 hover:bg-violet-500/5'}`}
+                                                            className={`p-2 rounded-xl transition-all hover:scale-110 ${item.isPublic ? 'bg-violet-500/10 text-violet-500' : 'text-theme-text-muted hover:text-violet-500 hover:bg-violet-500/5'}`}
                                                             title="Share"
                                                         >
                                                             <Share2 className="w-4 h-4" />
@@ -975,9 +1025,9 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
+                                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-theme-glass-border">
                                                 <div className="flex items-center gap-1.5">
-                                                    <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold">
+                                                    <div className="flex items-center gap-1 text-[10px] text-theme-text-muted font-bold">
                                                         <ThumbsUp className="w-3 h-3" />
                                                         {item.votes || 0}
                                                     </div>
@@ -1039,25 +1089,25 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
                         <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSharingItem(null)}></div>
                         <div className="glass-panel w-full max-w-md rounded-3xl overflow-hidden relative animate-scale-in">
-                            <div className="p-6 border-b border-white/5 flex items-center justify-between bg-theme-bg-accent">
-                                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                                    <Share2 className="w-5 h-5 text-violet-400" />
+                            <div className="p-6 border-b border-theme-glass-border flex items-center justify-between bg-theme-bg-accent">
+                                <h3 className="text-xl font-bold text-theme-text-primary flex items-center gap-2">
+                                    <Share2 className="w-5 h-5 text-violet-500" />
                                     Share Masterpiece
                                 </h3>
-                                <button onClick={() => setSharingItem(null)} className="p-2 hover:bg-white/10 rounded-xl transition-all">
-                                    <X className="w-5 h-5 text-slate-400" />
+                                <button onClick={() => setSharingItem(null)} className="p-2 hover:bg-theme-glass-bg rounded-xl transition-all">
+                                    <X className="w-5 h-5 text-theme-text-muted" />
                                 </button>
                             </div>
 
                             <div className="p-8 space-y-8">
                                 {/* Link Box */}
                                 <div className="space-y-3">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Shareable Link</p>
-                                    <div className="flex gap-2 p-2 bg-black/40 rounded-2xl border border-white/10 items-center">
+                                    <p className="text-xs font-bold text-theme-text-muted uppercase tracking-widest">Shareable Link</p>
+                                    <div className="flex gap-2 p-2 bg-theme-bg-primary rounded-2xl border border-theme-glass-border items-center">
                                         <input
                                             readOnly
                                             value={`${window.location.origin}/share/${sharingItem.id}`}
-                                            className="bg-transparent border-none text-sm text-slate-300 px-3 flex-grow outline-none truncate"
+                                            className="bg-transparent border-none text-sm text-theme-text-secondary px-3 flex-grow outline-none truncate"
                                         />
                                         <button
                                             onClick={() => copyShareLink(sharingItem.id)}
@@ -1071,7 +1121,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
 
                                 {/* Social Buttons */}
                                 <div className="space-y-3">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center">Share to Socials</p>
+                                    <p className="text-xs font-bold text-theme-text-muted uppercase tracking-widest text-center">Share to Socials</p>
 
                                     {navigator.share && (
                                         <button
@@ -1086,36 +1136,36 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                     <div className="grid grid-cols-3 gap-4">
                                         <button
                                             onClick={() => shareSocial('twitter', sharingItem)}
-                                            className="flex flex-col items-center gap-2 p-4 bg-theme-bg-accent hover:bg-white/10 rounded-2xl transition-all border border-theme-glass-border group"
+                                            className="flex flex-col items-center gap-2 p-4 bg-theme-bg-accent hover:bg-theme-glass-bg rounded-2xl transition-all border border-theme-glass-border group"
                                         >
-                                            <div className="w-12 h-12 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-400 group-hover:scale-110 transition-transform">
+                                            <div className="w-12 h-12 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-500 group-hover:scale-110 transition-transform">
                                                 <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
                                             </div>
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Twitter</span>
+                                            <span className="text-[10px] font-bold text-theme-text-muted uppercase tracking-wider">Twitter</span>
                                         </button>
                                         <button
                                             onClick={() => shareSocial('whatsapp', sharingItem)}
-                                            className="flex flex-col items-center gap-2 p-4 bg-theme-bg-accent hover:bg-white/10 rounded-2xl transition-all border border-theme-glass-border group"
+                                            className="flex flex-col items-center gap-2 p-4 bg-theme-bg-accent hover:bg-theme-glass-bg rounded-2xl transition-all border border-theme-glass-border group"
                                         >
-                                            <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center text-green-400 group-hover:scale-110 transition-transform">
+                                            <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center text-green-500 group-hover:scale-110 transition-transform">
                                                 <MessageCircle className="w-6 h-6" />
                                             </div>
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">WhatsApp</span>
+                                            <span className="text-[10px] font-bold text-theme-text-muted uppercase tracking-wider">WhatsApp</span>
                                         </button>
                                         <button
                                             onClick={() => shareSocial('facebook', sharingItem)}
-                                            className="flex flex-col items-center gap-2 p-4 bg-theme-bg-accent hover:bg-white/10 rounded-2xl transition-all border border-theme-glass-border group"
+                                            className="flex flex-col items-center gap-2 p-4 bg-theme-bg-accent hover:bg-theme-glass-bg rounded-2xl transition-all border border-theme-glass-border group"
                                         >
-                                            <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
+                                            <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
                                                 <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
                                             </div>
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Facebook</span>
+                                            <span className="text-[10px] font-bold text-theme-text-muted uppercase tracking-wider">Facebook</span>
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="p-6 bg-theme-bg-accent border-t border-white/5">
+                            <div className="p-6 bg-theme-bg-accent border-t border-theme-glass-border">
                                 <button
                                     onClick={async () => {
                                         const token = await user.getIdToken();
@@ -1129,7 +1179,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                         }
                                         setSharingItem(null);
                                     }}
-                                    className="w-full py-4 text-xs font-bold text-slate-500 hover:text-red-400 transition-colors uppercase tracking-widest"
+                                    className="w-full py-4 text-xs font-bold text-theme-text-muted hover:text-red-500 transition-colors uppercase tracking-widest"
                                 >
                                     Stop Sharing Publicly
                                 </button>
