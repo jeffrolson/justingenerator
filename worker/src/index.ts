@@ -1701,8 +1701,170 @@ app.get('/api/admin/branding', async (c) => {
       apple: doc?.fields?.apple?.stringValue || '/apple-touch-icon.png',
       'pwa-192': doc?.fields?.['pwa-192']?.stringValue || '/icon-192.png',
       'pwa-512': doc?.fields?.['pwa-512']?.stringValue || '/icon-512.png',
+      typography: {
+        primary: doc?.fields?.typography?.mapValue?.fields?.primary?.stringValue || 'Outfit, sans-serif',
+        secondary: doc?.fields?.typography?.mapValue?.fields?.secondary?.stringValue || 'Inter, sans-serif',
+        mono: doc?.fields?.typography?.mapValue?.fields?.mono?.stringValue || 'Space Mono, monospace',
+      },
+      colors: doc?.fields?.colors?.arrayValue?.values?.map((v: any) => ({
+        name: v.mapValue?.fields?.name?.stringValue,
+        hex: v.mapValue?.fields?.hex?.stringValue,
+        description: v.mapValue?.fields?.description?.stringValue
+      })) || [
+          { name: 'Primary (Violet)', hex: '#8b5cf6', description: 'Core brand color used for buttons and highlights' },
+          { name: 'Secondary (Fuchsia)', hex: '#d946ef', description: 'Accent color for gradients and secondary elements' },
+          { name: 'Background Primary', hex: '#050505', description: 'Main application background' },
+          { name: 'Background Secondary', hex: '#0a0a0a', description: 'Card and panel background' },
+          { name: 'Text Primary', hex: '#f8fafc', description: 'Main heading and body text' },
+          { name: 'Text Secondary', hex: '#64748b', description: 'Muted text and metadata' },
+        ]
     }
     return c.json({ status: 'success', branding })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+})
+
+// Update Full Branding
+app.post('/api/admin/branding', async (c) => {
+  const firebase = c.get('firebase')
+  const body = await c.req.json() as any
+  const { logo, favicon, apple, typography, colors } = body
+
+  try {
+    const fields: any = {
+      updatedAt: { timestampValue: new Date().toISOString() }
+    }
+
+    if (logo) fields.logo = { stringValue: logo }
+    if (favicon) fields.favicon = { stringValue: favicon }
+    if (apple) fields.apple = { stringValue: apple }
+    if (body['pwa-192']) fields['pwa-192'] = { stringValue: body['pwa-192'] }
+    if (body['pwa-512']) fields['pwa-512'] = { stringValue: body['pwa-512'] }
+
+    if (typography) {
+      fields.typography = {
+        mapValue: {
+          fields: {
+            primary: { stringValue: typography.primary },
+            secondary: { stringValue: typography.secondary },
+            mono: { stringValue: typography.mono }
+          }
+        }
+      }
+    }
+
+    if (colors) {
+      fields.colors = {
+        arrayValue: {
+          values: colors.map((c: any) => ({
+            mapValue: {
+              fields: {
+                name: { stringValue: c.name },
+                hex: { stringValue: c.hex },
+                description: { stringValue: c.description }
+              }
+            }
+          }))
+        }
+      }
+    }
+
+    await firebase.firestore('PATCH', 'settings/branding', { fields })
+    return c.json({ status: 'success' })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+})
+
+// Profiles Management
+app.get('/api/admin/branding/profiles', async (c) => {
+  const firebase = c.get('firebase')
+  try {
+    const profiles = await firebase.query('brand_profiles', {
+      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }]
+    })
+    return c.json({ status: 'success', profiles: profiles || [] })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+})
+
+app.post('/api/admin/branding/profiles', async (c) => {
+  const firebase = c.get('firebase')
+  const { name, config } = await c.req.json() as any
+  try {
+    const fields: any = {
+      name: { stringValue: name },
+      createdAt: { timestampValue: new Date().toISOString() },
+      config: {
+        mapValue: {
+          fields: Object.entries(config).reduce((acc: any, [key, val]: [string, any]) => {
+            if (typeof val === 'string') acc[key] = { stringValue: val }
+            else if (key === 'typography') {
+              acc[key] = {
+                mapValue: {
+                  fields: {
+                    primary: { stringValue: val.primary },
+                    secondary: { stringValue: val.secondary },
+                    mono: { stringValue: val.mono }
+                  }
+                }
+              }
+            } else if (key === 'colors') {
+              acc[key] = {
+                arrayValue: {
+                  values: val.map((cv: any) => ({
+                    mapValue: {
+                      fields: {
+                        name: { stringValue: cv.name },
+                        hex: { stringValue: cv.hex },
+                        description: { stringValue: cv.description }
+                      }
+                    }
+                  }))
+                }
+              }
+            }
+            return acc
+          }, {})
+        }
+      }
+    }
+    await firebase.firestore('POST', 'brand_profiles', { fields })
+    return c.json({ status: 'success' })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+})
+
+app.post('/api/admin/branding/profiles/:id/apply', async (c) => {
+  const firebase = c.get('firebase')
+  const id = c.req.param('id')
+  try {
+    const profile: any = await firebase.firestore('GET', `brand_profiles/${id}`)
+    const configFields = profile.fields.config.mapValue.fields
+
+    const update: any = {
+      fields: {
+        ...configFields,
+        updatedAt: { timestampValue: new Date().toISOString() }
+      }
+    }
+
+    await firebase.firestore('PATCH', 'settings/branding', update)
+    return c.json({ status: 'success' })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+})
+
+app.delete('/api/admin/branding/profiles/:id', async (c) => {
+  const firebase = c.get('firebase')
+  const id = c.req.param('id')
+  try {
+    await firebase.firestore('DELETE', `brand_profiles/${id}`)
+    return c.json({ status: 'success' })
   } catch (e: any) {
     return c.json({ error: e.message }, 500)
   }
