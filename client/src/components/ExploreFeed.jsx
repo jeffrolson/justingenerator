@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Sparkles, Heart, Bookmark, ArrowRight, Layers, Share2 } from 'lucide-react';
+import { Sparkles, Bookmark, ArrowRight, Layers, Share2 } from 'lucide-react';
 import { getImageUrl } from '../lib/url';
 
 export function ExploreFeed({ onRemix }) {
@@ -52,8 +52,8 @@ export function ExploreFeed({ onRemix }) {
                 // Optimistic UI update
                 setFeed(prev => prev.map(item => {
                     if (item.id === id) {
-                        const countKey = type === 'like' ? 'likesCount' : 'bookmarksCount';
-                        const isSetKey = type === 'like' ? 'isLiked' : 'isBookmarked';
+                        const countKey = 'bookmarksCount';
+                        const isSetKey = 'isBookmarked';
                         const currentCount = item[countKey] || 0;
                         const currentlySet = item[isSetKey];
 
@@ -142,13 +142,6 @@ export function ExploreFeed({ onRemix }) {
                         >
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex gap-4 text-white font-medium">
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); handleAction('like', item); }}
-                                        className="flex items-center gap-1.5 hover:text-rose-400 transition-colors"
-                                    >
-                                        <Heart className={`w-5 h-5 ${item.isLiked ? 'fill-rose-500 text-rose-500' : ''}`} />
-                                        <span>{item.likesCount || 0}</span>
-                                    </button>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleAction('bookmark', item); }}
                                         className="flex items-center gap-1.5 hover:text-amber-400 transition-colors"

@@ -2123,13 +2123,11 @@ app.get('/api/generations', async (c) => {
   const q = c.req.query('q')
 
   try {
-    // 1. Fetch user's likes and bookmarks IDs first
-    const [likesRes, bookmarksRes]: any[] = await Promise.all([
-      firebase.firestore('GET', `users/${user.sub}/likes`).catch(() => ({ documents: [] })),
+    // 1. Fetch user's bookmarks IDs first
+    const [bookmarksRes]: any[] = await Promise.all([
       firebase.firestore('GET', `users/${user.sub}/bookmarks`).catch(() => ({ documents: [] }))
     ]);
 
-    const likedIds = new Set((likesRes?.documents || []).map((d: any) => d.name.split('/').pop()));
     const bookmarkedIds = new Set((bookmarksRes?.documents || []).map((d: any) => d.name.split('/').pop()));
 
     let results: any[] = [];
@@ -2139,8 +2137,8 @@ app.get('/api/generations', async (c) => {
         where: { fieldFilter: { field: { fieldPath: 'userId' }, op: 'EQUAL', value: { stringValue: user.sub } } }
       });
     } else {
-      // Filter by 'likes' or 'bookmarks'
-      const targetIds = Array.from(filter === 'likes' ? likedIds : bookmarkedIds);
+      // Filter by 'bookmarks'
+      const targetIds = Array.from(bookmarkedIds);
 
       if (targetIds.length > 0) {
         const chunks = [];
@@ -2211,20 +2209,21 @@ app.get('/api/generations', async (c) => {
     // 5. Build final response with flags
     return c.json({
       status: 'success',
-      generations: results.map((g: any) => ({
-        id: g.id,
-        prompt: g.prompt?.stringValue,
-        summary: g.summary?.stringValue || g.prompt?.stringValue?.substring(0, 30),
-        imageUrl: `/api/image/${encodeURIComponent(g.resultPath?.stringValue || '')}`,
-        tags: g.tags?.arrayValue?.values?.map((v: any) => v.stringValue) || [],
-        createdAt: g.createdAt?.timestampValue,
-        votes: parseInt(g.votes?.integerValue || '0'),
-        likesCount: parseInt(g.likesCount?.integerValue || '0'),
-        bookmarksCount: parseInt(g.bookmarksCount?.integerValue || '0'),
-        isPublic: g.isPublic?.booleanValue || false,
-        isLiked: likedIds.has(g.id),
-        isBookmarked: bookmarkedIds.has(g.id)
-      }))
+      generations: results.map((g: any) => {
+        const id = g.id || g.name?.split('/').pop();
+        return {
+          id,
+          prompt: g.prompt?.stringValue,
+          summary: g.summary?.stringValue || g.prompt?.stringValue?.substring(0, 30),
+          imageUrl: `/api/image/${encodeURIComponent(g.resultPath?.stringValue || '')}`,
+          tags: g.tags?.arrayValue?.values?.map((v: any) => v.stringValue) || [],
+          createdAt: g.createdAt?.timestampValue,
+          votes: parseInt(g.votes?.integerValue || '0'),
+          bookmarksCount: parseInt(g.bookmarksCount?.integerValue || '0'),
+          isPublic: g.isPublic?.booleanValue || false,
+          isBookmarked: bookmarkedIds.has(id)
+        };
+      })
     });
   } catch (e: any) {
     console.error('History fetch failed:', e);
@@ -2400,37 +2399,7 @@ app.get('/api/public/feed', async (c) => {
   })
 })
 
-// Like a generation
-app.post('/api/generations/:id/like', async (c) => {
-  const user = c.get('user')
-  const id = c.req.param('id')
-  const firebase = c.get('firebase')
 
-  // 1. Toggle like in user's collection
-  const likePath = `users/${user.sub}/likes/${id}`
-  const existingLike: any = await firebase.firestore('GET', likePath).catch(() => null)
-  const isLiked = !!existingLike
-
-  if (isLiked) {
-    await firebase.firestore('DELETE', likePath)
-  } else {
-    await firebase.firestore('PATCH', likePath, {
-      fields: { createdAt: { timestampValue: new Date().toISOString() } }
-    })
-  }
-
-  // 2. Update likesCount on the generation
-  const gen: any = await firebase.firestore('GET', `generations/${id}`)
-  if (gen) {
-    const currentLikes = parseInt(gen.fields?.likesCount?.integerValue || '0')
-    const newLikes = isLiked ? Math.max(0, currentLikes - 1) : currentLikes + 1
-    await firebase.firestore('PATCH', `generations/${id}?updateMask.fieldPaths=likesCount`, {
-      fields: { likesCount: { integerValue: newLikes } }
-    })
-  }
-
-  return c.json({ status: 'success', isLiked: !isLiked })
-})
 
 // Bookmark a generation
 app.post('/api/generations/:id/bookmark', async (c) => {

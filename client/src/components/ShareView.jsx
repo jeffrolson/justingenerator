@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, Download, Calendar, ThumbsUp, Share2, Eye, Share } from 'lucide-react';
+import { Sparkles, Download, Calendar, Share2, Eye, Share } from 'lucide-react';
 import { getImageUrl } from '../lib/url';
 
 export function ShareView({ genId }) {
@@ -187,10 +187,10 @@ export function ShareView({ genId }) {
 
                             <div className="flex items-center gap-2 bg-theme-bg-accent p-1.5 rounded-2xl border border-theme-glass-border shadow-inner">
                                 <div className="px-6 py-3 text-center">
-                                    <p className="text-[10px] text-theme-text-muted font-bold uppercase tracking-widest mb-1">Impact</p>
+                                    <p className="text-[10px] text-theme-text-muted font-bold uppercase tracking-widest mb-1">Status</p>
                                     <div className="flex items-center gap-2 justify-center">
-                                        <ThumbsUp className="w-5 h-5 text-emerald-500 fill-emerald-500/10" />
-                                        <span className="text-2xl font-black text-theme-text-primary">{data.votes || 0}</span>
+                                        <Sparkles className="w-5 h-5 text-emerald-500 fill-emerald-500/10" />
+                                        <span className="text-sm font-black text-theme-text-primary">Masterpiece</span>
                                     </div>
                                 </div>
                             </div>

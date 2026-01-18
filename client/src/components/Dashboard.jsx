@@ -328,15 +328,14 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
-                const isSetKey = type === 'like' ? 'isLiked' : 'isBookmarked';
-                const countKey = type === 'like' ? 'likesCount' : 'bookmarksCount';
+                const isSetKey = 'isBookmarked';
+                const countKey = 'bookmarksCount';
                 const currentlySet = item[isSetKey];
 
                 // Update local state
                 setHistory(prev => {
-                    // If we are in a filtered tab and we just un-set it, remove from view
-                    if ((activeTab === 'likes' && type === 'like' && currentlySet) ||
-                        (activeTab === 'bookmarks' && type === 'bookmark' && currentlySet)) {
+                    // If we are in the bookmarks tab and we just un-set it, remove from view
+                    if (activeTab === 'bookmarks' && currentlySet) {
                         return prev.filter(g => g.id !== item.id);
                     }
 
@@ -867,7 +866,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                             </div>
 
                             <div className="flex bg-theme-bg-accent p-1 rounded-xl border border-theme-glass-border">
-                                {['my', 'likes', 'bookmarks'].map((tab) => (
+                                {['my', 'bookmarks'].map((tab) => (
                                     <button
                                         key={tab}
                                         onClick={() => setActiveTab(tab)}
@@ -959,13 +958,6 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                                 </div>
                                                 <div className="flex items-center gap-1.5 shrink-0">
                                                     <button
-                                                        onClick={(e) => { e.stopPropagation(); handleInteraction('like', item); }}
-                                                        className={`p-2 rounded-xl transition-all hover:scale-110 ${item.isLiked ? 'bg-rose-500/10 text-rose-500' : 'text-theme-text-muted hover:text-rose-500 hover:bg-rose-500/5'}`}
-                                                        title="Like"
-                                                    >
-                                                        <Heart className={`w-4 h-4 ${item.isLiked ? 'fill-rose-500' : ''}`} />
-                                                    </button>
-                                                    <button
                                                         onClick={(e) => { e.stopPropagation(); handleInteraction('bookmark', item); }}
                                                         className={`p-2 rounded-xl transition-all hover:scale-110 ${item.isBookmarked ? 'bg-amber-500/10 text-amber-500' : 'text-theme-text-muted hover:text-amber-500 hover:bg-amber-500/5'}`}
                                                         title="Bookmark"
@@ -983,7 +975,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                                                     setSharingItem(item);
                                                                 }
                                                             }}
-                                                            className={`p-2 rounded-xl transition-all hover:scale-110 ${item.isPublic ? 'bg-violet-500/10 text-violet-500' : 'text-theme-text-muted hover:text-violet-500 hover:bg-violet-500/5'}`}
+                                                            className={`p-2 rounded-xl transition-all hover:scale-110 ${item.isPublic ? 'bg-emerald-500/10 text-emerald-500 shadow-emerald-500/20' : 'text-theme-text-muted hover:text-violet-500 hover:bg-violet-500/5'}`}
                                                             title="Share"
                                                         >
                                                             <Share2 className="w-4 h-4" />
@@ -1027,11 +1019,8 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                             </div>
 
                                             <div className="flex items-center justify-between mt-2 pt-2 border-t border-theme-glass-border">
-                                                <div className="flex items-center gap-1.5">
-                                                    <div className="flex items-center gap-1 text-[10px] text-theme-text-muted font-bold">
-                                                        <ThumbsUp className="w-3 h-3" />
-                                                        {item.votes || 0}
-                                                    </div>
+                                                <div className="flex items-center gap-1.5 px-2">
+                                                    {/* Votes/Likes removed */}
                                                 </div>
                                                 <div className="flex gap-1">
                                                     {item.tags?.slice(0, 1).map(tag => (
