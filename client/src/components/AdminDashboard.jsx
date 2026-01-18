@@ -8,12 +8,18 @@ import { Settings as SettingsComponent } from './admin/Settings';
 import { Analytics } from './admin/Analytics';
 import { Referrals } from './admin/Referrals';
 import { Brand } from './admin/Brand';
+import { UserProfileModal } from './UserProfileModal';
+import { useTheme } from '../contexts/ThemeContext';
 
 export function AdminDashboard() {
     const { user, backendUser, logout } = useAuth();
     const [activeTab, setActiveTab] = useState('overview');
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
+    const { theme, setTheme } = useTheme();
+
+    const credits = parseInt(backendUser?.credits?.integerValue || '0');
 
     const menuItems = [
         { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -145,19 +151,33 @@ export function AdminDashboard() {
                         <h2 className="text-lg font-semibold text-(--text-primary) capitalize">{activeTab}</h2>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => setShowSettings(true)}
+                        className="flex items-center gap-4 hover:bg-theme-glass-bg p-1 pr-2 rounded-full transition-all group"
+                    >
                         <div className="text-right hidden sm:block">
-                            <div className="text-sm font-medium text-(--text-primary) max-w-[150px] truncate">{user?.email}</div>
+                            <div className="text-sm font-medium text-(--text-primary) max-w-[150px] truncate group-hover:text-violet-400 transition-colors">{user?.email}</div>
                             <div className="text-[10px] text-(--text-secondary) uppercase tracking-wider">{backendUser?.role?.stringValue || 'User'}</div>
                         </div>
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-500 to-orange-500 ring-2 ring-(--glass-border)"></div>
-                    </div>
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-500 to-orange-500 ring-2 ring-(--glass-border) group-hover:scale-110 group-hover:ring-violet-500/50 transition-all"></div>
+                    </button>
                 </header>
 
                 <div className="p-4 md:p-5 lg:p-6 max-w-[1600px] mx-auto">
                     {renderContent()}
                 </div>
             </main>
+
+            <UserProfileModal
+                isOpen={showSettings}
+                onClose={() => setShowSettings(false)}
+                user={user}
+                backendUser={backendUser}
+                logout={logout}
+                theme={theme}
+                setTheme={setTheme}
+                credits={credits}
+            />
         </div>
     );
 }
