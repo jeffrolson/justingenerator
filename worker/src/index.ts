@@ -32,6 +32,7 @@ const PRESETS = [
     description: 'Neon-drenched futuristic style',
     prompt: 'A futuristic cyberpunk portrait, neon lights, high tech, highly detailed, cinematic lighting',
     tags: ['cyberpunk', 'futuristic', 'neon', 'sci-fi'],
+    category: 'Digital Art',
     sampleUrl: '/examples/cyberpunk.png'
   },
   {
@@ -40,6 +41,7 @@ const PRESETS = [
     description: 'Nostalgic disposable camera look',
     prompt: 'A vintage 90s disposable camera photo, heavy flash, grainy texture, nostalgic atmosphere, suburban setting',
     tags: ['vintage', '90s', 'retro', 'film'],
+    category: 'Photorealistic',
     sampleUrl: '/examples/vintage.png'
   },
   {
@@ -48,6 +50,7 @@ const PRESETS = [
     description: 'Classical masterpiece aesthetic',
     prompt: 'A classical oil painting portrait, visible brushstrokes, textured canvas, dramatic chiaroscuro lighting, museum quality',
     tags: ['art', 'painting', 'classical', 'oil'],
+    category: 'Artistic',
     sampleUrl: '/examples/painting.png'
   },
   {
@@ -56,6 +59,7 @@ const PRESETS = [
     description: 'Clean and vibrant cel-shaded style',
     prompt: 'A clean anime style portrait, cel-shaded, vibrant colors, expressive lines, studio ghibli inspired background',
     tags: ['anime', 'illustration', 'vibrant', 'cartoon'],
+    category: 'Digital Art',
     sampleUrl: 'https://images.unsplash.com/photo-1578632292335-df3abbb0d586?auto=format&fit=crop&w=800&q=80'
   },
   {
@@ -64,6 +68,7 @@ const PRESETS = [
     description: 'Hand-drawn artistic charcoal look',
     prompt: 'A hand-drawn pencil and charcoal sketch portrait, detailed cross-hatching, artistic paper texture, expressive graphite strokes',
     tags: ['sketch', 'drawing', 'artistic', 'charcoal'],
+    category: 'Artistic',
     sampleUrl: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=800&q=80'
   }
 ]
@@ -774,6 +779,7 @@ app.get('/api/presets', async (c) => {
       description: 'Custom Preset', // or add description field
       prompt: doc.prompt?.stringValue,
       tags: doc.tags?.arrayValue?.values?.map((v: any) => v.stringValue) || [],
+      category: doc.category?.stringValue || 'Uncategorized',
       sampleUrl: doc.imageUrl?.stringValue ?
         ((doc.imageUrl.stringValue.startsWith('http') || doc.imageUrl.stringValue.startsWith('/examples/')) ?
           doc.imageUrl.stringValue : `/api/image/${encodeURIComponent(doc.imageUrl.stringValue)}`)
@@ -793,7 +799,8 @@ app.get('/api/presets', async (c) => {
         title: p.title,
         description: p.description,
         sampleUrl: p.sampleUrl,
-        tags: p.tags
+        tags: p.tags,
+        category: p.category
       }))
     ]
   })
@@ -1554,6 +1561,7 @@ app.get('/api/admin/prompts', async (c) => {
       prompt: doc.prompt?.stringValue,
       tags: doc.tags?.arrayValue?.values?.map((v: any) => v.stringValue) || [],
       imageUrl: doc.imageUrl?.stringValue,
+      category: doc.category?.stringValue,
       createdAt: doc.createdAt?.timestampValue,
       generationsCount: parseInt(doc.generationsCount?.integerValue || '0'),
       updatedAt: doc.updatedAt?.timestampValue
@@ -1583,6 +1591,7 @@ app.post('/api/admin/prompts', async (c) => {
   const name = body['name'] as string
   const prompt = body['prompt'] as string
   const tagsStr = body['tags'] as string
+  const category = body['category'] as string
   const file = body['image'] as File
 
   if (!name || !prompt || !file) {
@@ -1605,6 +1614,7 @@ app.post('/api/admin/prompts', async (c) => {
       name: { stringValue: name },
       prompt: { stringValue: prompt },
       tags: { arrayValue: { values: tags.map(t => ({ stringValue: t })) } },
+      category: { stringValue: category || 'Uncategorized' },
       imageUrl: { stringValue: imagePath },
       createdAt: { timestampValue: new Date().toISOString() },
       updatedAt: { timestampValue: new Date().toISOString() },
@@ -1983,6 +1993,7 @@ app.put('/api/admin/prompts/:id', async (c) => {
   const name = body['name'] as string
   const prompt = body['prompt'] as string
   const tagsStr = body['tags'] as string
+  const category = body['category'] as string
   const file = body['image'] as File
 
   if (!name || !prompt) {
@@ -1995,10 +2006,11 @@ app.put('/api/admin/prompts/:id', async (c) => {
     name: { stringValue: name },
     prompt: { stringValue: prompt },
     tags: { arrayValue: { values: tags.map(t => ({ stringValue: t })) } },
+    category: { stringValue: category || 'Uncategorized' },
     updatedAt: { timestampValue: new Date().toISOString() }
   };
 
-  let updateMask = 'updateMask.fieldPaths=name&updateMask.fieldPaths=prompt&updateMask.fieldPaths=tags&updateMask.fieldPaths=updatedAt';
+  let updateMask = 'updateMask.fieldPaths=name&updateMask.fieldPaths=prompt&updateMask.fieldPaths=tags&updateMask.fieldPaths=category&updateMask.fieldPaths=updatedAt';
 
   // Handle Image Update if provided
   if (file) {

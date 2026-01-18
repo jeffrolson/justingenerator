@@ -17,6 +17,7 @@ export function PromptManager() {
         name: '',
         prompt: '',
         tags: '',
+        category: 'Photorealistic',
         image: null
     });
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -56,6 +57,7 @@ export function PromptManager() {
             name: prompt.name,
             prompt: prompt.prompt || '',
             tags: prompt.tags ? prompt.tags.join(', ') : '',
+            category: prompt.category || 'Photorealistic',
             image: null
         });
         setPreviewUrl(
@@ -65,7 +67,7 @@ export function PromptManager() {
     };
 
     const resetForm = (shouldClose = true) => {
-        setFormData({ name: '', prompt: '', tags: '', image: null });
+        setFormData({ name: '', prompt: '', tags: '', category: 'Photorealistic', image: null });
         setPreviewUrl(null);
         setEditingId(null);
         if (shouldClose && shouldClose !== false) {
@@ -84,6 +86,7 @@ export function PromptManager() {
             body.append('name', formData.name);
             body.append('prompt', formData.prompt);
             body.append('tags', formData.tags);
+            body.append('category', formData.category);
             if (formData.image) {
                 body.append('image', formData.image);
             }
@@ -127,13 +130,14 @@ export function PromptManager() {
     };
 
     const handleExportCSV = () => {
-        const headers = ['Name', 'Prompt', 'Tags', 'Created At', 'Generations'];
+        const headers = ['Name', 'Prompt', 'Tags', 'Category', 'Created At', 'Generations'];
         const csvContent = [
             headers.join(','),
             ...prompts.map(p => {
                 const tags = p.tags ? `"${p.tags.join(',')}"` : '';
                 const promptText = p.prompt ? `"${p.prompt.replace(/"/g, '""')}"` : '';
-                return `"${p.name}",${promptText},${tags},${p.createdAt},${p.generationsCount || 0}`;
+                const category = p.category || 'Uncategorized';
+                return `"${p.name}",${promptText},${tags},"${category}",${p.createdAt},${p.generationsCount || 0}`;
             })
         ].join('\n');
 
@@ -304,6 +308,20 @@ export function PromptManager() {
                                         placeholder="neon, sci-fi, futuristic"
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">Category</label>
+                                    <select
+                                        value={formData.category}
+                                        onChange={e => setFormData({ ...formData, category: e.target.value })}
+                                        className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 focus:outline-none focus:border-violet-500 transition-colors text-white"
+                                    >
+                                        <option value="Photorealistic">Photorealistic</option>
+                                        <option value="Digital Art">Digital Art</option>
+                                        <option value="Artistic">Artistic</option>
+                                        <option value="Cinematic">Cinematic</option>
+                                        <option value="Uncategorized">Uncategorized</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <div className="space-y-4">
@@ -380,7 +398,8 @@ export function PromptManager() {
                                 <tr className="border-b border-white/10 bg-black/20">
                                     <th className="p-4 font-semibold text-gray-400 text-sm">Image</th>
                                     <th className="p-4 font-semibold text-gray-400 text-sm">Preset Name</th>
-                                    <th className="p-4 font-semibold text-gray-400 text-sm w-1/3">Prompt</th>
+                                    <th className="p-4 font-semibold text-gray-400 text-sm w-1/4">Prompt</th>
+                                    <th className="p-4 font-semibold text-gray-400 text-sm">Category</th>
                                     <th className="p-4 font-semibold text-gray-400 text-sm">Tags</th>
                                     <th className="p-4 font-semibold text-gray-400 text-sm text-center">Generations</th>
                                     <th className="p-4 font-semibold text-gray-400 text-sm text-right">Actions</th>
@@ -421,6 +440,11 @@ export function PromptManager() {
                                             </td>
                                             <td className="p-4 text-gray-300 text-sm">
                                                 <div className="line-clamp-2 max-w-sm" title={prompt.prompt}>{prompt.prompt}</div>
+                                            </td>
+                                            <td className="p-4">
+                                                <span className="inline-block px-2 py-1 bg-white/5 rounded text-xs text-gray-300 border border-white/10">
+                                                    {prompt.category || 'Uncategorized'}
+                                                </span>
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex flex-wrap gap-1">

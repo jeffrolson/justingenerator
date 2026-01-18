@@ -51,6 +51,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
 
     const [presets, setPresets] = useState([]);
     const [selectedPresetId, setSelectedPresetId] = useState(null);
+    const [selectedCategory, setSelectedCategory] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTag, setActiveTag] = useState(null);
     const [features, setFeatures] = useState({ dailyRewards: true, referrals: true });
@@ -542,11 +543,26 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                         </div>
 
                         <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <label className="text-sm font-medium text-theme-text-secondary dark:text-violet-200 flex items-center gap-2">
-                                    {remixSource ? 'Remixing Style' : 'Choose a Style'}
-                                    {(selectedPresetId || remixSource) && <Check className="w-4 h-4 text-emerald-500 animate-fade-in" />}
-                                </label>
+                            <div className="flex flex-col gap-4">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm font-medium text-theme-text-secondary dark:text-violet-200 flex items-center gap-2">
+                                        {remixSource ? 'Remixing Style' : 'Choose a Style'}
+                                        {(selectedPresetId || remixSource) && <Check className="w-4 h-4 text-emerald-500 animate-fade-in" />}
+                                    </label>
+                                </div>
+                                {!remixSource && (
+                                    <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar snap-x">
+                                        {['All', ...new Set(presets.map(p => p.category || 'Uncategorized').filter(Boolean))].sort().map((cat) => (
+                                            <button
+                                                key={cat}
+                                                onClick={() => setSelectedCategory(cat)}
+                                                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap shadow-sm border ${selectedCategory === cat ? 'bg-violet-600 text-white border-violet-500 shadow-violet-500/20' : 'bg-theme-bg-accent text-theme-text-secondary border-theme-glass-border hover:bg-theme-glass-bg hover:text-theme-text-primary'}`}
+                                            >
+                                                {cat}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             {remixSource ? (
@@ -575,7 +591,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                             ) : (
                                 <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                        {presets.map((preset) => (
+                                        {presets.filter(p => selectedCategory === 'All' || (p.category || 'Uncategorized') === selectedCategory).map((preset) => (
                                             <button
                                                 key={preset.id}
                                                 onClick={() => setSelectedPresetId(preset.id)}
