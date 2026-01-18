@@ -3,6 +3,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area } from 'recharts';
 import { TrendingUp, Users, DollarSign, Activity, AlertCircle, Zap, Wallet, Calendar, ExternalLink, Cloud, Globe, Trash2, Edit2, X } from 'lucide-react';
 
+const IconMap = {
+    TrendingUp, Users, DollarSign, Activity, AlertCircle, Zap, Wallet, Calendar, ExternalLink, Cloud, Globe, Trash2, Edit2, X
+};
+
 const KPICard = ({ title, value, trend, icon: Icon, color, label }) => (
     <div className="bg-theme-bg-secondary/50 border border-theme-glass-border rounded-lg p-4 backdrop-blur-sm hover:bg-theme-glass-bg transition-colors">
         <div className="flex justify-between items-start mb-2">
@@ -30,17 +34,33 @@ export function Overview() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [range, setRange] = useState('7d');
+    const [platformLinks, setPlatformLinks] = useState([]);
+
+    useEffect(() => {
+        loadData();
+    }, [range]);
 
     const loadData = async () => {
         setLoading(true);
         try {
             const token = await getToken();
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/kpis?range=${range}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const json = await res.json();
-            if (json.status === 'success') {
-                setData(json);
+            const [kpiRes, settingsRes] = await Promise.all([
+                fetch(`${import.meta.env.VITE_API_URL}/api/admin/kpis?range=${range}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }),
+                fetch(`${import.meta.env.VITE_API_URL}/api/admin/settings`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+            ]);
+
+            const kpiJson = await kpiRes.json();
+            const settingsJson = await settingsRes.json();
+
+            if (kpiJson.status === 'success') {
+                setData(kpiJson);
+            }
+            if (settingsJson.status === 'success') {
+                setPlatformLinks(settingsJson.settings.platformLinks || []);
             }
         } catch (e) {
             console.error("Failed to load KPIs", e);
