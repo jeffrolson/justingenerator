@@ -6,8 +6,10 @@
   --color-theme-text-muted: var(--text-muted);
   --color-theme-bg-primary: var(--bg-primary);
   --color-theme-bg-secondary: var(--bg-secondary);
+  --color-theme-bg-accent: var(--bg-accent);
   --color-theme-glass-bg: var(--glass-bg);
   --color-theme-glass-border: var(--glass-border);
+  --color-theme-glass-input: var(--glass-input-bg);
 }
 
 :root {
@@ -36,11 +38,11 @@
   --bg-secondary: #ffffff;
   --bg-accent: #f1f5f9;
   --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
   --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(0, 0, 0, 0.08);
-  --glass-input-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-input-bg: rgba(255, 255, 255, 0.95);
   --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
   --accent-glow: rgba(124, 58, 237, 0.05);
   --app-bg-accent: #f8fafc;

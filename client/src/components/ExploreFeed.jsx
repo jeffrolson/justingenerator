@@ -85,7 +85,7 @@ export function ExploreFeed({ onRemix }) {
                 {user && (
                     <button
                         onClick={() => window.location.href = '/'}
-                        className="md:absolute left-0 top-0 flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors text-sm font-medium bg-[var(--glass-bg)] px-4 py-2 rounded-full border border-[var(--glass-border)] hover:bg-[var(--bg-accent)] mb-6 md:mb-0 mx-auto md:mx-0 w-fit"
+                        className="md:absolute left-0 top-0 flex items-center gap-2 text-theme-text-secondary hover:text-theme-text-primary transition-colors text-sm font-medium bg-theme-glass-bg px-4 py-2 rounded-full border border-theme-glass-border hover:bg-theme-bg-accent mb-6 md:mb-0 mx-auto md:mx-0 w-fit"
                     >
                         <ArrowRight className="w-4 h-4 rotate-180" />
                         Back to Studio
@@ -95,8 +95,8 @@ export function ExploreFeed({ onRemix }) {
                     <Sparkles className="w-4 h-4" />
                     <span>Discovery Feed</span>
                 </div>
-                <h1 className="text-3xl md:text-6xl font-bold tracking-tight text-[var(--text-primary)] px-2">
-                    Explore the <span className="bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-fuchsia-400">Masterpieces</span>
+                <h1 className="text-3xl md:text-6xl font-bold tracking-tight text-theme-text-primary px-2">
+                    Explore the <span className="bg-clip-text text-transparent bg-gradient-to-r from-violet-500 to-fuchsia-500 dark:from-violet-400 dark:to-fuchsia-400">Masterpieces</span>
                 </h1>
                 <p className="text-[var(--text-secondary)] text-base md:text-lg max-w-2xl mx-auto px-4 font-medium">
                     Click any photo below to transform your own photo into that style instantly.

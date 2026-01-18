@@ -438,24 +438,24 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                     <div className="bg-violet-600 p-2 rounded-lg shadow-lg shadow-violet-500/30">
                         <Sparkles className="w-6 h-6 text-white" />
                     </div>
-                    <h2 className="text-xl md:text-2xl font-bold text-(--text-primary) tracking-tight">Justin Generator</h2>
+                    <h2 className="text-xl md:text-2xl font-bold text-theme-text-primary tracking-tight">Justin Generator</h2>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-center gap-3 md:gap-6">
                     <button
                         onClick={() => window.location.href = '/explore'}
-                        className="text-(--text-secondary) hover:text-(--text-primary) transition-colors flex items-center gap-2 text-[10px] md:text-sm font-bold uppercase tracking-wider hover:scale-105"
+                        className="text-theme-text-secondary hover:text-theme-text-primary transition-colors flex items-center gap-2 text-[10px] md:text-sm font-bold uppercase tracking-wider hover:scale-105"
                     >
                         <ExternalLink className="w-4 h-4" />
                         <span className="hidden xs:inline">Public Gallery</span>
                         <span className="xs:hidden">Gallery</span>
                     </button>
-                    <div className="flex items-center gap-2 md:gap-3 bg-white/5 pl-3 md:pl-5 pr-1 md:pr-2 py-1 md:py-1.5 rounded-full border border-white/10 group/credits">
+                    <div className="flex items-center gap-2 md:gap-3 bg-theme-bg-accent pl-3 md:pl-5 pr-1 md:pr-2 py-1 md:py-1.5 rounded-full border border-theme-glass-border group/credits">
                         <div className="flex items-center gap-2">
-                            <span className="text-violet-200 text-[8px] md:text-[10px] font-bold uppercase tracking-widest opacity-60">Credits</span>
-                            <span className="text-white font-black text-lg md:text-xl tabular-nums">{credits}</span>
+                            <span className="text-violet-500 dark:text-violet-200 text-[8px] md:text-[10px] font-bold uppercase tracking-widest opacity-80 dark:opacity-60">Credits</span>
+                            <span className="text-theme-text-primary font-black text-lg md:text-xl tabular-nums">{credits}</span>
                         </div>
-                        <div className="h-4 md:h-6 w-px bg-white/10 mx-0.5 md:mx-1"></div>
+                        <div className="h-4 md:h-6 w-px bg-theme-glass-border mx-0.5 md:mx-1"></div>
                         <button
                             onClick={() => window.location.href = '/pricing'}
                             className="bg-violet-600 hover:bg-violet-500 text-white px-2 md:px-3 py-1 md:py-1.5 rounded-full transition-all hover:scale-105 flex items-center gap-1.5 shadow-lg shadow-violet-600/20"
@@ -465,14 +465,14 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                             <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider">Add</span>
                         </button>
                     </div>
-                    <div className="flex items-center gap-3 px-4 border-l border-white/10">
+                    <div className="flex items-center gap-3 px-4 border-l border-theme-glass-border">
                         <button
                             onClick={() => setShowSettings(true)}
-                            className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-all hover:scale-110 active:scale-95 group relative"
+                            className="w-10 h-10 rounded-full bg-theme-bg-accent border border-theme-glass-border flex items-center justify-center text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-glass-bg transition-all hover:scale-110 active:scale-95 group relative"
                             title="User Settings"
                         >
                             <User className="w-5 h-5" />
-                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-violet-500 rounded-full border-2 border-[#050505] group-hover:scale-110 transition-transform"></div>
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-violet-500 rounded-full border-2 border-theme-bg-primary group-hover:scale-110 transition-transform"></div>
                         </button>
                     </div>
                 </div>
@@ -488,8 +488,8 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                     <Plus className="w-5 h-5 text-violet-400" />
                                 </div>
                                 <div>
-                                    <h4 className="text-white font-bold text-sm">Daily Reward</h4>
-                                    <p className="text-slate-400 text-xs text-nowrap">Claim your free daily credit</p>
+                                    <h4 className="text-theme-text-primary font-bold text-sm">Daily Reward</h4>
+                                    <p className="text-theme-text-secondary text-xs text-nowrap">Claim your free daily credit</p>
                                 </div>
                             </div>
                             <button
@@ -509,8 +509,8 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                     <Share2 className="w-5 h-5 text-fuchsia-400" />
                                 </div>
                                 <div>
-                                    <h4 className="text-(--text-primary) font-bold text-sm">Invite Friends</h4>
-                                    <p className="text-(--text-secondary) text-xs text-nowrap">Get {referralCredits} credits for every referral</p>
+                                    <h4 className="text-theme-text-primary font-bold text-sm">Invite Friends</h4>
+                                    <p className="text-theme-text-secondary text-xs text-nowrap">Get {referralCredits} credits for every referral</p>
                                 </div>
                             </div>
                             <button
@@ -541,9 +541,9 @@ export function Dashboard({ initialRemix, onClearRemix }) {
 
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <label className="text-sm font-medium text-violet-200 flex items-center gap-2">
+                                <label className="text-sm font-medium text-theme-text-secondary dark:text-violet-200 flex items-center gap-2">
                                     {remixSource ? 'Remixing Style' : 'Choose a Style'}
-                                    {(selectedPresetId || remixSource) && <Check className="w-4 h-4 text-emerald-400 animate-fade-in" />}
+                                    {(selectedPresetId || remixSource) && <Check className="w-4 h-4 text-emerald-500 animate-fade-in" />}
                                 </label>
                             </div>
 
@@ -688,7 +688,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                         </span>
                                     </div>
 
-                                    <div className="h-4 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 p-1">
+                                    <div className="h-4 w-full bg-theme-bg-accent rounded-full overflow-hidden border border-theme-glass-border p-1">
                                         <div
                                             className="h-full bg-gradient-to-r from-violet-600 via-fuchsia-500 to-violet-600 bg-[length:200%_100%] animate-shimmer rounded-full transition-all duration-1000 ease-out"
                                             style={{ width: `${(activeJob.completed / activeJob.total) * 100}%` }}
@@ -708,7 +708,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                             </div>
                                         ))}
                                         {[...Array(activeJob.total - activeJob.results.length)].map((_, i) => (
-                                            <div key={`blank-${i}`} className="aspect-square rounded-lg bg-white/5 border border-white/5 animate-pulse flex items-center justify-center">
+                                            <div key={`blank-${i}`} className="aspect-square rounded-lg bg-theme-bg-accent border border-theme-glass-border animate-pulse flex items-center justify-center">
                                                 <ImageIcon className="w-6 h-6 text-white/10" />
                                             </div>
                                         ))}
@@ -765,7 +765,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                             </div>
                         ) : (
                             <div className="text-center text-slate-600 space-y-4 relative z-10">
-                                <div className="p-8 rounded-full bg-white/5 inline-flex backdrop-blur-xl border border-white/5 shimmer">
+                                <div className="p-8 rounded-full bg-theme-bg-accent inline-flex backdrop-blur-xl border border-theme-glass-border shimmer">
                                     <ImageIcon className="w-16 h-16 opacity-30" />
                                 </div>
                                 <p className="text-slate-500 font-medium">Your masterpiece will appear here</p>
@@ -778,7 +778,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div className="flex items-center gap-6">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-white/5 rounded-lg border border-white/10 shadow-inner">
+                                <div className="p-2 bg-theme-bg-accent rounded-lg border border-white/10 shadow-inner">
                                     <ImageIcon className="w-5 h-5 text-violet-400" />
                                 </div>
                                 <h3 className="text-xl font-bold text-white tracking-tight">Gallery</h3>
@@ -792,7 +792,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Search prompts & tags..."
-                                    className="bg-white/5 border border-white/10 rounded-full pl-10 pr-10 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 w-full transition-all"
+                                    className="bg-theme-bg-accent border border-theme-glass-border rounded-full pl-10 pr-10 py-2.5 text-sm text-theme-text-primary placeholder:text-theme-text-muted focus:outline-none focus:ring-2 focus:ring-violet-500/50 w-full transition-all"
                                 />
                                 {searchQuery && (
                                     <button
@@ -814,7 +814,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                     </button>
                                 </div>
                             )}
-                            <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+                            <div className="flex bg-theme-bg-accent p-1 rounded-xl border border-white/10">
                                 {['my', 'likes', 'bookmarks'].map((tab) => (
                                     <button
                                         key={tab}
@@ -831,7 +831,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                     {loadingHistory ? (
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                             {[...Array(5)].map((_, i) => (
-                                <div key={i} className="aspect-square bg-white/5 rounded-xl animate-pulse border border-white/5"></div>
+                                <div key={i} className="aspect-square bg-theme-bg-accent rounded-xl animate-pulse border border-theme-glass-border"></div>
                             ))}
                         </div>
                     ) : (() => {
@@ -848,7 +848,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                         if (filtered.length === 0) {
                             return (
                                 <div className="text-center py-20 animate-fade-in">
-                                    <div className="p-6 rounded-3xl bg-white/5 border border-white/5 inline-block backdrop-blur-xl mb-4">
+                                    <div className="p-6 rounded-3xl bg-theme-bg-accent border border-theme-glass-border inline-block backdrop-blur-xl mb-4">
                                         <ImageIcon className="w-12 h-12 text-slate-700 mx-auto" />
                                     </div>
                                     <h4 className="text-white font-bold text-lg">No results found</h4>
@@ -935,7 +935,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <div className="flex items-center gap-1 bg-white/5 rounded-full p-1 border border-white/5">
+                                                <div className="flex items-center gap-1 bg-theme-bg-accent rounded-full p-1 border border-theme-glass-border">
                                                     <button
                                                         onClick={() => handleVote(item.id, 'up')}
                                                         className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-green-400"
@@ -1009,7 +1009,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
                         <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSharingItem(null)}></div>
                         <div className="glass-panel w-full max-w-md rounded-3xl overflow-hidden relative animate-scale-in">
-                            <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5">
+                            <div className="p-6 border-b border-white/5 flex items-center justify-between bg-theme-bg-accent">
                                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
                                     <Share2 className="w-5 h-5 text-violet-400" />
                                     Share Masterpiece
@@ -1056,7 +1056,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                     <div className="grid grid-cols-3 gap-4">
                                         <button
                                             onClick={() => shareSocial('twitter', sharingItem)}
-                                            className="flex flex-col items-center gap-2 p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all border border-white/5 group"
+                                            className="flex flex-col items-center gap-2 p-4 bg-theme-bg-accent hover:bg-white/10 rounded-2xl transition-all border border-theme-glass-border group"
                                         >
                                             <div className="w-12 h-12 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-400 group-hover:scale-110 transition-transform">
                                                 <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
@@ -1065,7 +1065,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                         </button>
                                         <button
                                             onClick={() => shareSocial('whatsapp', sharingItem)}
-                                            className="flex flex-col items-center gap-2 p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all border border-white/5 group"
+                                            className="flex flex-col items-center gap-2 p-4 bg-theme-bg-accent hover:bg-white/10 rounded-2xl transition-all border border-theme-glass-border group"
                                         >
                                             <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center text-green-400 group-hover:scale-110 transition-transform">
                                                 <MessageCircle className="w-6 h-6" />
@@ -1074,7 +1074,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                         </button>
                                         <button
                                             onClick={() => shareSocial('facebook', sharingItem)}
-                                            className="flex flex-col items-center gap-2 p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all border border-white/5 group"
+                                            className="flex flex-col items-center gap-2 p-4 bg-theme-bg-accent hover:bg-white/10 rounded-2xl transition-all border border-theme-glass-border group"
                                         >
                                             <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
                                                 <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
@@ -1085,7 +1085,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                 </div>
                             </div>
 
-                            <div className="p-6 bg-white/5 border-t border-white/5">
+                            <div className="p-6 bg-theme-bg-accent border-t border-white/5">
                                 <button
                                     onClick={async () => {
                                         const token = await user.getIdToken();
@@ -1113,7 +1113,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                 <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setShowSettings(false)}></div>
                     <div className="glass-panel w-full max-w-md rounded-3xl overflow-hidden relative animate-scale-in border border-white/10 shadow-2xl">
-                        <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5">
+                        <div className="p-6 border-b border-white/5 flex items-center justify-between bg-theme-bg-accent">
                             <h3 className="text-xl font-bold text-white flex items-center gap-2">
                                 <User className="w-5 h-5 text-violet-400" />
                                 User Profile
@@ -1125,37 +1125,37 @@ export function Dashboard({ initialRemix, onClearRemix }) {
 
                         <div className="p-8 space-y-8">
                             {/* User Info */}
-                            <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
+                            <div className="flex items-center gap-4 p-4 rounded-2xl bg-theme-bg-accent border border-theme-glass-border">
                                 <div className="w-12 h-12 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-xl">
                                     {user?.email?.[0].toUpperCase()}
                                 </div>
                                 <div className="flex-grow min-w-0">
-                                    <p className="text-white font-bold truncate">{user?.email}</p>
-                                    <p className="text-slate-400 text-xs">Member since {new Date(backendUser?.createdAt?.timestampValue || Date.now()).toLocaleDateString()}</p>
+                                    <p className="text-theme-text-primary font-bold truncate">{user?.email}</p>
+                                    <p className="text-theme-text-secondary text-xs">Member since {new Date(backendUser?.createdAt?.timestampValue || Date.now()).toLocaleDateString()}</p>
                                 </div>
                             </div>
 
                             {/* Theme Selection */}
                             <div className="space-y-4">
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Appearance</p>
+                                <p className="text-xs font-bold text-theme-text-muted uppercase tracking-widest">Appearance</p>
                                 <div className="grid grid-cols-3 gap-3">
                                     <button
                                         onClick={() => setTheme('light')}
-                                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${theme === 'light' ? 'bg-violet-600 border-violet-500 text-white shadow-lg shadow-violet-600/20' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/10'}`}
+                                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${theme === 'light' ? 'bg-violet-600 border-violet-500 text-white shadow-lg shadow-violet-600/20' : 'bg-theme-bg-accent border-theme-glass-border text-theme-text-secondary hover:border-theme-text-primary'}`}
                                     >
                                         <Sun className="w-5 h-5" />
                                         <span className="text-[10px] font-bold uppercase tracking-wider">Light</span>
                                     </button>
                                     <button
                                         onClick={() => setTheme('dark')}
-                                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${theme === 'dark' ? 'bg-violet-600 border-violet-500 text-white shadow-lg shadow-violet-600/20' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/10'}`}
+                                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${theme === 'dark' ? 'bg-violet-600 border-violet-500 text-white shadow-lg shadow-violet-600/20' : 'bg-theme-bg-accent border-theme-glass-border text-theme-text-secondary hover:border-theme-text-primary'}`}
                                     >
                                         <Moon className="w-5 h-5" />
                                         <span className="text-[10px] font-bold uppercase tracking-wider">Dark</span>
                                     </button>
                                     <button
                                         onClick={() => setTheme('system')}
-                                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${theme === 'system' ? 'bg-violet-600 border-violet-500 text-white shadow-lg shadow-violet-600/20' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/10'}`}
+                                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${theme === 'system' ? 'bg-violet-600 border-violet-500 text-white shadow-lg shadow-violet-600/20' : 'bg-theme-bg-accent border-theme-glass-border text-theme-text-secondary hover:border-theme-text-primary'}`}
                                     >
                                         <Monitor className="w-5 h-5" />
                                         <span className="text-[10px] font-bold uppercase tracking-wider">System</span>
@@ -1165,18 +1165,18 @@ export function Dashboard({ initialRemix, onClearRemix }) {
 
                             {/* Stats */}
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Available Credits</p>
-                                    <p className="text-xl font-bold text-white">{credits}</p>
+                                <div className="p-4 rounded-2xl bg-theme-bg-accent border border-theme-glass-border">
+                                    <p className="text-[10px] font-bold text-theme-text-muted uppercase tracking-wider mb-1">Available Credits</p>
+                                    <p className="text-xl font-bold text-theme-text-primary">{credits}</p>
                                 </div>
-                                <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Account Role</p>
-                                    <p className="text-xl font-bold text-violet-400 uppercase tracking-tight">{backendUser?.role?.stringValue || 'User'}</p>
+                                <div className="p-4 rounded-2xl bg-theme-bg-accent border border-theme-glass-border">
+                                    <p className="text-[10px] font-bold text-theme-text-muted uppercase tracking-wider mb-1">Account Role</p>
+                                    <p className="text-xl font-bold text-theme-text-primary capitalize">{backendUser?.role || 'user'}</p>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="p-6 bg-white/5 border-t border-white/5 flex flex-col gap-3">
+                        <div className="p-6 bg-theme-bg-accent border-t border-white/5 flex flex-col gap-3">
                             {backendUser?.role?.stringValue === 'admin' && (
                                 <button
                                     onClick={() => window.location.href = '/admin'}

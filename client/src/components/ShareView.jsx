@@ -78,25 +78,25 @@ export function ShareView({ genId }) {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-black gap-4">
+            <div className="min-h-screen flex flex-col items-center justify-center bg-theme-bg-primary gap-4">
                 <div className="w-12 h-12 border-4 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-violet-200 animate-pulse font-medium">Revealing Masterpiece...</p>
+                <p className="text-violet-500 animate-pulse font-medium">Revealing Masterpiece...</p>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-black p-6 text-center">
+            <div className="min-h-screen flex flex-col items-center justify-center bg-theme-bg-primary p-6 text-center">
                 <div className="glass-panel p-8 rounded-3xl border-red-500/20 max-w-md w-full">
                     <div className="bg-red-500/10 p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
-                        <Sparkles className="w-8 h-8 text-red-400" />
+                        <Sparkles className="w-8 h-8 text-red-500" />
                     </div>
-                    <h2 className="text-2xl font-bold text-white mb-2">Oops!</h2>
-                    <p className="text-slate-400 mb-8">{error}</p>
+                    <h2 className="text-2xl font-bold text-theme-text-primary mb-2">Oops!</h2>
+                    <p className="text-theme-text-secondary mb-8">{error}</p>
                     <button
                         onClick={() => window.location.href = '/'}
-                        className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-3 px-6 rounded-xl transition-all border border-white/10"
+                        className="w-full bg-theme-bg-accent hover:bg-theme-glass-bg text-theme-text-primary font-bold py-3 px-6 rounded-xl transition-all border border-theme-glass-border"
                     >
                         Return Home
                     </button>
@@ -106,7 +106,7 @@ export function ShareView({ genId }) {
     }
 
     return (
-        <div className="min-h-screen w-full bg-black flex flex-col items-center py-12 px-4 overflow-x-hidden">
+        <div className="min-h-screen w-full bg-theme-bg-primary flex flex-col items-center py-12 px-4 overflow-x-hidden">
             {/* Logo/Header */}
             <div
                 className="flex items-center gap-3 mb-12 cursor-pointer group"
@@ -115,13 +115,13 @@ export function ShareView({ genId }) {
                 <div className="bg-violet-600 p-2 rounded-lg shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform">
                     <Sparkles className="w-6 h-6 text-white" />
                 </div>
-                <h1 className="text-2xl font-bold text-white tracking-tight">Justin Generator</h1>
+                <h1 className="text-2xl font-bold text-theme-text-primary tracking-tight">Justin Generator</h1>
             </div>
 
             <div className="w-full max-w-2xl animate-fade-in">
-                <div className="glass-card overflow-hidden rounded-[2.5rem] border-white/5 shadow-2xl shadow-violet-500/5 group">
+                <div className="glass-card overflow-hidden rounded-[2.5rem] border-theme-glass-border shadow-2xl shadow-violet-500/5 group">
                     {/* Main Image Container */}
-                    <div className="relative aspect-[3/4] bg-slate-900 overflow-hidden">
+                    <div className="relative aspect-[3/4] bg-theme-bg-accent overflow-hidden">
                         <img
                             src={getImageUrl(data.imageUrl, apiUrl, 1200)}
                             alt={data.summary}
@@ -154,24 +154,23 @@ export function ShareView({ genId }) {
                     <div className="p-8 md:p-10 space-y-6">
                         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                             <div className="space-y-2">
-                                <h2 className="text-3xl md:text-4xl font-black text-white leading-tight">
+                                <h2 className="text-3xl md:text-4xl font-black text-theme-text-primary leading-tight">
                                     {data.summary}
                                 </h2>
                             </div>
-
-                            <div className="flex items-center gap-4 bg-white/5 p-2 rounded-2xl border border-white/5">
-                                <div className="px-4 py-2 text-center border-r border-white/5">
-                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Votes</p>
+                            <div className="flex items-center gap-4 bg-theme-bg-accent p-2 rounded-2xl border border-theme-glass-border">
+                                <div className="px-4 py-2 text-center border-r border-theme-glass-border">
+                                    <p className="text-[10px] text-theme-text-muted font-bold uppercase tracking-wider mb-1">Votes</p>
                                     <div className="flex items-center gap-2 justify-center">
-                                        <ThumbsUp className="w-4 h-4 text-green-400" />
-                                        <span className="text-xl font-black text-white">{data.votes || 0}</span>
+                                        <ThumbsUp className="w-4 h-4 text-green-500" />
+                                        <span className="text-xl font-black text-theme-text-primary">{data.votes || 0}</span>
                                     </div>
                                 </div>
                                 <div className="px-4 py-2 text-center">
-                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Created</p>
+                                    <p className="text-[10px] text-theme-text-muted font-bold uppercase tracking-wider mb-1">Created</p>
                                     <div className="flex items-center gap-2 justify-center">
-                                        <Calendar className="w-4 h-4 text-violet-400" />
-                                        <span className="text-sm font-bold text-white">
+                                        <Calendar className="w-4 h-4 text-violet-500" />
+                                        <span className="text-sm font-bold text-theme-text-primary">
                                             {new Date(data.createdAt).toLocaleDateString()}
                                         </span>
                                     </div>
@@ -179,12 +178,11 @@ export function ShareView({ genId }) {
                             </div>
                         </div>
 
-                        <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-
+                        <div className="h-px w-full bg-gradient-to-r from-transparent via-theme-glass-border to-transparent"></div>
                         <div className="space-y-3">
-                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em]">Original Prompt</h3>
-                            <div className="bg-white/5 rounded-2xl p-6 border border-white/5">
-                                <p className="text-slate-300 italic leading-relaxed md:text-lg">
+                            <h3 className="text-xs font-bold text-theme-text-muted uppercase tracking-[0.2em]">Original Prompt</h3>
+                            <div className="bg-theme-bg-accent rounded-2xl p-6 border border-theme-glass-border">
+                                <p className="text-theme-text-secondary italic leading-relaxed md:text-lg">
                                     "{data.prompt}"
                                 </p>
                             </div>
