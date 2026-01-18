@@ -1670,6 +1670,60 @@ app.post('/api/admin/settings', async (c) => {
   }
 })
 
+// Branding Endpoints
+app.get('/api/admin/branding', async (c) => {
+  const firebase = c.get('firebase')
+  try {
+    const doc: any = await firebase.firestore('GET', 'settings/branding').catch(() => null)
+    const branding = {
+      logo: doc?.fields?.logo?.stringValue || '/logo.png',
+      favicon: doc?.fields?.favicon?.stringValue || '/favicon.png',
+      apple: doc?.fields?.apple?.stringValue || '/apple-touch-icon.png',
+      'pwa-192': doc?.fields?.['pwa-192']?.stringValue || '/icon-192.png',
+      'pwa-512': doc?.fields?.['pwa-512']?.stringValue || '/icon-512.png',
+    }
+    return c.json({ status: 'success', branding })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+})
+
+app.post('/api/admin/branding/upload', async (c) => {
+  const firebase = c.get('firebase')
+  const env = c.env
+
+  try {
+    const formData = await c.req.formData()
+    const file = formData.get('file') as File
+    const key = formData.get('key') as string // 'logo', 'favicon', etc.
+
+    if (!file || !key) return c.json({ error: 'Missing file or key' }, 400)
+
+    // Upload to R2
+    const fileName = `branding/${key}_${Date.now()}.${file.name.split('.').pop()}`
+    const buffer = await file.arrayBuffer()
+    await env.BUCKET.put(fileName, buffer, {
+      httpMetadata: { contentType: file.type }
+    })
+
+    const imageUrl = `${fileName}` // We'll proxy this via /api/public/image/
+
+    // Update Firestore
+    const update: any = {
+      fields: {
+        [key]: { stringValue: imageUrl },
+        updatedAt: { timestampValue: new Date().toISOString() }
+      }
+    }
+
+    await firebase.firestore('PATCH', 'settings/branding', update)
+
+    return c.json({ status: 'success', imageUrl })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
+  }
+})
+
 // Test Telegram Notification
 app.post('/api/admin/test-telegram', async (c) => {
   const user = c.get('user')

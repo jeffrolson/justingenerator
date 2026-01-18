@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, Users, Image as ImageIcon, Settings, LogOut, ArrowLeft, Menu, X, ChevronLeft, ChevronRight, BarChart2, Gift } from 'lucide-react';
+import { LayoutDashboard, Users, Image as ImageIcon, Settings, LogOut, ArrowLeft, Menu, X, ChevronLeft, ChevronRight, BarChart2, Gift, Palette } from 'lucide-react';
 import { Overview } from './admin/Overview';
 import { UserManager } from './admin/UserManager';
 import { PromptManager } from './admin/PromptManager';
 import { Settings as SettingsComponent } from './admin/Settings';
 import { Analytics } from './admin/Analytics';
 import { Referrals } from './admin/Referrals';
+import { Brand } from './admin/Brand';
 
 export function AdminDashboard() {
     const { user, backendUser, logout } = useAuth();
@@ -19,6 +20,7 @@ export function AdminDashboard() {
         { id: 'analytics', label: 'Analytics', icon: BarChart2 },
         { id: 'users', label: 'Users', icon: Users },
         { id: 'content', label: 'Templates', icon: ImageIcon },
+        { id: 'brand', label: 'Brand', icon: Palette },
         { id: 'referrals', label: 'Referrals', icon: Gift },
         { id: 'settings', label: 'Settings', icon: Settings },
     ];
@@ -29,6 +31,7 @@ export function AdminDashboard() {
             case 'analytics': return <Analytics />;
             case 'users': return <UserManager />;
             case 'content': return <PromptManager />;
+            case 'brand': return <Brand />;
             case 'referrals': return <Referrals />;
             case 'settings': return <SettingsComponent />;
             default: return <div className="text-gray-400">Functionality coming soon...</div>;
