@@ -125,8 +125,7 @@ export class Analytics {
             totalTokens: 0
         }
 
-        for (const doc of events) {
-            const e = doc.fields || {}
+        for (const e of events) {
             const type = e.eventType?.stringValue
             const uid = e.userId?.stringValue
 
@@ -217,7 +216,7 @@ export class Analytics {
             }
         })
         const gens = gensRes || []
-        const activeUsersCount = new Set(gens.map((g: any) => g.fields?.userId?.stringValue)).size
+        const activeUsersCount = new Set(gens.map((g: any) => g.userId?.stringValue)).size
 
         const eventsRes: any = await this.firebase.query('events', {
             where: {
@@ -231,7 +230,7 @@ export class Analytics {
                 }
             }
         })
-        const revenueCents = (eventsRes || []).reduce((acc: number, e: any) => acc + parseInt(e.fields?.metadata?.mapValue?.fields?.amount?.integerValue || '0'), 0)
+        const revenueCents = (eventsRes || []).reduce((acc: number, e: any) => acc + parseInt(e.metadata?.mapValue?.fields?.amount?.integerValue || '0'), 0)
 
         const payload = {
             fields: {
