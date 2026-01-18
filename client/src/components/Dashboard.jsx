@@ -1171,7 +1171,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                 </div>
                                 <div className="p-4 rounded-2xl bg-theme-bg-accent border border-theme-glass-border">
                                     <p className="text-[10px] font-bold text-theme-text-muted uppercase tracking-wider mb-1">Account Role</p>
-                                    <p className="text-xl font-bold text-theme-text-primary capitalize">{backendUser?.role || 'user'}</p>
+                                    <p className="text-xl font-bold text-theme-text-primary capitalize">{backendUser?.role?.stringValue || 'user'}</p>
                                 </div>
                             </div>
                         </div>
