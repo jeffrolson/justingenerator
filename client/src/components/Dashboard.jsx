@@ -452,7 +452,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                     </button>
                     <div className="flex items-center gap-2 md:gap-3 bg-theme-bg-accent pl-3 md:pl-5 pr-1 md:pr-2 py-1 md:py-1.5 rounded-full border border-theme-glass-border group/credits">
                         <div className="flex items-center gap-2">
-                            <span className="text-violet-500 dark:text-violet-200 text-[8px] md:text-[10px] font-bold uppercase tracking-widest opacity-80 dark:opacity-60">Credits</span>
+                            <span className="text-violet-600 dark:text-violet-300 text-[8px] md:text-[10px] font-bold uppercase tracking-widest">Credits</span>
                             <span className="text-theme-text-primary font-black text-lg md:text-xl tabular-nums">{credits}</span>
                         </div>
                         <div className="h-4 md:h-6 w-px bg-theme-glass-border mx-0.5 md:mx-1"></div>
@@ -1114,7 +1114,7 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setShowSettings(false)}></div>
                     <div className="glass-panel w-full max-w-md rounded-3xl overflow-hidden relative animate-scale-in border border-white/10 shadow-2xl">
                         <div className="p-6 border-b border-white/5 flex items-center justify-between bg-theme-bg-accent">
-                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                            <h3 className="text-xl font-bold text-theme-text-primary flex items-center gap-2">
                                 <User className="w-5 h-5 text-violet-400" />
                                 User Profile
                             </h3>
@@ -1172,6 +1172,29 @@ export function Dashboard({ initialRemix, onClearRemix }) {
                                 <div className="p-4 rounded-2xl bg-theme-bg-accent border border-theme-glass-border">
                                     <p className="text-[10px] font-bold text-theme-text-muted uppercase tracking-wider mb-1">Account Role</p>
                                     <p className="text-xl font-bold text-theme-text-primary capitalize">{backendUser?.role?.stringValue || 'user'}</p>
+                                </div>
+                            </div>
+                            {/* Actions */}
+                            <div className="space-y-3">
+                                <p className="text-xs font-bold text-theme-text-muted uppercase tracking-widest">Quick Actions</p>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        onClick={() => window.location.href = '/pricing'}
+                                        className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white transition-all shadow-lg shadow-violet-600/20 text-xs font-bold uppercase tracking-wider"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        Add Credits
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(`${window.location.origin}/?ref=${user.uid}`);
+                                            alert("Referral link copied to clipboard!");
+                                        }}
+                                        className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-theme-bg-accent border border-theme-glass-border text-theme-text-primary hover:bg-theme-glass-bg transition-all text-xs font-bold uppercase tracking-wider"
+                                    >
+                                        <Share2 className="w-4 h-4 text-violet-500" />
+                                        Referral Link
+                                    </button>
                                 </div>
                             </div>
                         </div>
