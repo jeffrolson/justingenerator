@@ -1813,7 +1813,13 @@ app.get('/api/admin/branding/profiles', async (c) => {
     const profiles = await firebase.query('brand_profiles', {
       orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }]
     })
-    return c.json({ status: 'success', profiles: profiles || [] })
+    const mappedProfiles = (profiles || []).map((p: any) => ({
+      id: p.id,
+      name: p.name?.stringValue || p.fields?.name?.stringValue,
+      createdAt: p.createdAt?.timestampValue || p.fields?.createdAt?.timestampValue,
+      config: p.config?.mapValue?.fields || p.fields?.config?.mapValue?.fields
+    }))
+    return c.json({ status: 'success', profiles: mappedProfiles })
   } catch (e: any) {
     return c.json({ error: e.message }, 500)
   }
