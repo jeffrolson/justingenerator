@@ -847,14 +847,71 @@ app.post('/api/admin/aggregate', async (c) => {
   }
 })
 
-// KPI Dashboard Data (Real)
 app.get('/api/admin/kpis', async (c) => {
   const firebase = c.get('firebase')
   const analytics = c.get('analytics')
   const range = c.req.query('range') || '7d'
 
   try {
-    // 1. Determine Date Range
+    // 0. Handle Short-Window Real-Time Ranges (1h, 6h, 12h, 1d)
+    const shortRanges = ['1h', '6h', '12h', '1d']
+    if (shortRanges.includes(range.toLowerCase())) {
+      const now = new Date()
+      let lookbackMs = 3600000
+      let slices = 12 // 5 min each
+      if (range === '6h') { lookbackMs = 6 * 3600000; slices = 6 } // 1h each
+      if (range === '12h') { lookbackMs = 12 * 3600000; slices = 12 } // 1h each
+      if (range === '1d') { lookbackMs = 24 * 3600000; slices = 24 } // 1h each
+
+      const startTime = new Date(now.getTime() - lookbackMs).toISOString()
+
+      // Fetch raw events & generations
+      const [eventsRaw, gensRaw, usersRaw] = await Promise.all([
+        firebase.query('events', {
+          where: { fieldFilter: { field: { fieldPath: 'timestamp' }, op: 'GREATER_THAN_OR_EQUAL', value: { timestampValue: startTime } } },
+          limit: 2000
+        }),
+        firebase.query('generations', {
+          where: { fieldFilter: { field: { fieldPath: 'createdAt' }, op: 'GREATER_THAN_OR_EQUAL', value: { timestampValue: startTime } } },
+          limit: 2000
+        }),
+        firebase.query('users', {
+          where: { fieldFilter: { field: { fieldPath: 'createdAt' }, op: 'GREATER_THAN_OR_EQUAL', value: { timestampValue: startTime } } },
+          limit: 500
+        })
+      ])
+
+      const events = eventsRaw || []
+      const gens = gensRaw || []
+      const signups = usersRaw || []
+
+      const activeUsers = new Set([...events.map((e: any) => e.userId?.stringValue), ...gens.map((g: any) => g.userId?.stringValue)]).size
+      const revenue = events.reduce((acc: number, e: any) => {
+        if (e.eventType?.stringValue === 'payment_success') {
+          return acc + (parseInt(e.metadata?.mapValue?.fields?.amount?.integerValue || '0') / 100)
+        }
+        return acc
+      }, 0)
+      const tokens = gens.reduce((acc: number, g: any) => acc + parseInt(g.tokens?.integerValue || '0'), 0)
+      const cost = (tokens / 1000000) * 0.50
+
+      const kpis = {
+        activeUsers: { value: activeUsers, label: 'Active Users', trend: 0 },
+        revenue: { value: revenue.toFixed(2), label: 'Revenue', trend: 0 },
+        newUsers: { value: signups.length, label: 'New Signups', trend: 0 },
+        tokens: { value: (tokens / 1000000).toFixed(2) + 'M', label: 'Tokens Used', trend: 0 },
+        cost: { value: cost.toFixed(3), label: 'Est. Cost', trend: 0 },
+        netProfit: { value: (revenue - cost).toFixed(2), label: 'Est. Net Profit', trend: 0 },
+        allTime: { tokens: '0M', cost: '0.00', revenue: '0.00' } // Optional: could still fetch all-time if needed
+      }
+
+      // Create dummy chart data for now to satisfy UI
+      const chartData = [{ date: startTime, activeUsers, revenue, generations: gens.length, totalTokens: tokens, cost }]
+
+      return c.json({ status: 'success', kpis, charts: { growth: chartData } })
+    }
+
+    // 1. Determine Date Range (Existing 7d+ logic)
     let days = 7
     if (range === '30d') days = 30
     if (range === '90d') days = 90
@@ -867,8 +924,6 @@ app.get('/api/admin/kpis', async (c) => {
     }).reverse()
 
     // 2. Fetch all-time stats for "Overall" metrics
-    // We can get this by querying all documents in daily_stats or calculating from users/generations
-    // For now, let's query all daily_stats to get a better "All Time" than just the range
     const allStatsRes: any = await firebase.query('daily_stats', {
       orderBy: [{ field: { fieldPath: 'date' }, direction: 'ASCENDING' }]
     }) as any[]
@@ -880,10 +935,6 @@ app.get('/api/admin/kpis', async (c) => {
 
     // 3. Fetch range-specific docs
     let docs: any[] = []
-    const start = dates[0]
-    const end = dates[dates.length - 1]
-
-    // Filter allTimeDocs for the current range
     const docMap = new Map(allTimeDocs.map((d: any) => [d.date.stringValue, d]))
     docs = dates.map(date => docMap.get(date) || null)
 
@@ -891,10 +942,8 @@ app.get('/api/admin/kpis', async (c) => {
     const todayStr = new Date().toISOString().split('T')[0]
     const todayIdx = dates.indexOf(todayStr)
 
-    // If today is in the requested range, re-calculate it live
     if (todayIdx !== -1) {
       try {
-        // console.log(`[KPIs] Refreshing today's stats (${todayStr}) for live view`)
         const todayStats = await analytics.aggregateDailyStats(todayStr)
         docs[todayIdx] = {
           date: { stringValue: todayStr },
@@ -909,7 +958,6 @@ app.get('/api/admin/kpis', async (c) => {
       }
     }
 
-    // Parse stats
     const stats = docs.map((doc: any, i) => {
       const date = dates[i]
       if (!doc) return {
@@ -932,7 +980,6 @@ app.get('/api/admin/kpis', async (c) => {
       }
     })
 
-    // Calculate Range Totals
     const avgDAU = Math.round(stats.reduce((acc, curr) => acc + curr.activeUsers, 0) / (stats.length || 1))
     const totalRevenueRange = stats.reduce((acc, curr) => acc + curr.revenue, 0)
     const totalNewUsersRange = stats.reduce((acc, curr) => acc + curr.newUsers, 0)
@@ -942,9 +989,6 @@ app.get('/api/admin/kpis', async (c) => {
     const currentDay = stats[stats.length - 1]
     const prevDay = stats[stats.length - 2] || currentDay
 
-    const currentProfit = currentDay.revenue - currentDay.cost
-    const prevProfit = prevDay.revenue - prevDay.cost
-
     const kpis = {
       activeUsers: { value: avgDAU, label: 'Avg Daily Users', trend: calcTrend(currentDay.activeUsers, prevDay.activeUsers) },
       revenue: { value: totalRevenueRange.toFixed(2), label: 'Total Revenue', trend: calcTrend(currentDay.revenue, prevDay.revenue) },
@@ -952,7 +996,6 @@ app.get('/api/admin/kpis', async (c) => {
       tokens: { value: (totalTokensRange / 1000000).toFixed(2) + 'M', label: 'Tokens Used', trend: calcTrend(currentDay.totalTokens, prevDay.totalTokens) },
       cost: { value: totalCostRange.toFixed(3), label: 'Est. Cost', trend: calcTrend(currentDay.cost, prevDay.cost) },
       netProfit: { value: (totalRevenueRange - totalCostRange).toFixed(2), label: 'Est. Net Profit', trend: calcTrend(currentDay.revenue - currentDay.cost, prevDay.revenue - prevDay.cost) },
-      // All-Time metrics
       allTime: {
         tokens: (totalTokensAllTime / 1000000).toFixed(2) + 'M',
         cost: totalCostAllTime.toFixed(2),
@@ -963,9 +1006,7 @@ app.get('/api/admin/kpis', async (c) => {
     return c.json({
       status: 'success',
       kpis,
-      charts: {
-        growth: stats
-      }
+      charts: { growth: stats }
     })
   } catch (e: any) {
     console.error("KPI Error", e)
@@ -1200,7 +1241,7 @@ app.get('/api/admin/analytics/users/:id', async (c) => {
   const userId = c.req.param('id')
 
   try {
-    const [userDoc, gensRes, loginsRes] = await Promise.all([
+    const [userDocRaw, gensRes, loginsRes] = await Promise.all([
       firebase.firestore('GET', `users/${userId}`),
       firebase.query('generations', {
         where: { fieldFilter: { field: { fieldPath: 'userId' }, op: 'EQUAL', value: { stringValue: userId } } },
@@ -1220,7 +1261,8 @@ app.get('/api/admin/analytics/users/:id', async (c) => {
       })
     ])
 
-    if (!userDoc) return c.json({ error: 'User not found' }, 404)
+    if (!userDocRaw) return c.json({ error: 'User not found' }, 404)
+    const userDoc = userDocRaw as any
 
     const gens = gensRes as any[]
     const logins = loginsRes as any[]
@@ -1228,6 +1270,18 @@ app.get('/api/admin/analytics/users/:id', async (c) => {
     const stats = {
       totalLogins: logins.length,
       totalGenerations: gens.length,
+      subscriptionStatus: userDoc.fields?.subscriptionStatus?.stringValue || 'free',
+      subscriptionEnd: userDoc.fields?.subscriptionEnd?.timestampValue || null,
+      loginHistory: logins.slice(0, 10).map(l => ({
+        timestamp: l.timestamp?.timestampValue,
+        ip: l.metadata?.mapValue?.fields?.ip?.stringValue || 'Unknown'
+      })),
+      recentGenerations: gens.slice(0, 8).map(g => ({
+        id: g.id,
+        imageUrl: g.imageUrl?.stringValue,
+        prompt: g.prompt?.stringValue,
+        createdAt: g.createdAt?.timestampValue
+      })),
       types: {
         remix: gens.filter(g => g.remixFrom?.stringValue).length,
         preset: gens.filter(g => g.storedPromptId?.stringValue && !g.remixFrom?.stringValue).length,
@@ -1252,13 +1306,27 @@ app.get('/api/admin/analytics/users/:id', async (c) => {
 // Analytics: Global Generation Popularity
 app.get('/api/admin/analytics/popularity', async (c) => {
   const firebase = c.get('firebase')
+  const range = c.req.query('range') || '7d'
 
   try {
-    // Fetch last 1000 generations to measure recent popularity
+    // Determine start time based on range
+    let lookbackMs = 7 * 24 * 3600000
+    if (range === '1h') lookbackMs = 3600000
+    if (range === '6h') lookbackMs = 6 * 3600000
+    if (range === '12h') lookbackMs = 12 * 3600000
+    if (range === '1d') lookbackMs = 24 * 3600000
+    if (range === '30d') lookbackMs = 30 * 24 * 3600000
+    if (range === '90d') lookbackMs = 90 * 24 * 3600000
+    if (range === 'all') lookbackMs = 365 * 24 * 3600000
+
+    const startTime = new Date(Date.now() - lookbackMs).toISOString()
+
+    // Fetch generations in range
     const [gens, presetsRes] = await Promise.all([
       firebase.query('generations', {
+        where: { fieldFilter: { field: { fieldPath: 'createdAt' }, op: 'GREATER_THAN_OR_EQUAL', value: { timestampValue: startTime } } },
         orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
-        limit: 1000
+        limit: 2000
       }),
       firebase.query('stored_prompts', { limit: 100 })
     ]) as [any[], any[]]
@@ -1271,12 +1339,19 @@ app.get('/api/admin/analytics/popularity', async (c) => {
     const typeStats = { remix: 0, preset: 0, custom: 0 }
     const presetCounts: Record<string, number> = {}
     const userCounts: Record<string, number> = {}
+    const subscriptionStats: Record<string, number> = { free: 0, active: 0 }
 
     let totalTokens = 0
     const dailyTrend: Record<string, { tokens: number, cost: number, count: number }> = {}
     const modelStats: Record<string, number> = {}
 
+    const typeFilter = c.req.query('type')
+
     for (const g of gens) {
+      // Type filter
+      const gType = g.remixFrom?.stringValue ? 'remix' : (g.storedPromptId?.stringValue ? 'preset' : 'custom')
+      if (typeFilter && gType !== typeFilter) continue
+
       // Type breakdown
       if (g.remixFrom?.stringValue) typeStats.remix++
       else if (g.storedPromptId?.stringValue) typeStats.preset++
@@ -1336,6 +1411,17 @@ app.get('/api/admin/analytics/popularity', async (c) => {
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([date, stats]) => ({ date, ...stats }))
 
+    // For subscription distribution, we need to fetch user docs for the power users or a sample
+    const sampleUids = Array.from(new Set(gens.slice(0, 100).map(g => g.userId?.stringValue))).filter(Boolean)
+    const userDocs = await Promise.all(sampleUids.map(uid => firebase.firestore('GET', `users/${uid}`).catch(() => null)))
+
+    userDocs.forEach((doc: any) => {
+      if (doc) {
+        const status = doc.fields?.subscriptionStatus?.stringValue || 'free'
+        subscriptionStats[status] = (subscriptionStats[status] || 0) + 1
+      }
+    })
+
     return c.json({
       status: 'success',
       generationTypes: typeStats,
@@ -1349,6 +1435,7 @@ app.get('/api/admin/analytics/popularity', async (c) => {
         })),
       powerUsers,
       modelStats,
+      subscriptionStats,
       financials: {
         totalTokens,
         totalEstimatedCost: totalTokens * 0.0000005

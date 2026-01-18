@@ -116,12 +116,14 @@ export function Overview() {
                         <Activity size={16} className={syncing ? 'animate-spin' : ''} />
                         {syncing ? 'Syncing...' : 'Sync Data'}
                     </button>
-                    <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
-                        {['7d', '30d', '90d', 'all'].map(r => (
+                    <div className="flex bg-theme-bg-secondary p-1 rounded-lg border border-theme-border">
+                        {['1h', '6h', '12h', '1d', '7d', '30d', '90d', 'all'].map((r) => (
                             <button
                                 key={r}
                                 onClick={() => setRange(r)}
-                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${range === r ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'
+                                className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${range === r
+                                    ? 'bg-theme-primary text-white shadow-sm'
+                                    : 'text-theme-text-muted hover:text-theme-text-primary'
                                     }`}
                             >
                                 {r.toUpperCase()}

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { History, Search, Filter, MoreVertical, Shield, User, CreditCard, Mail, Calendar, X, ExternalLink, Download, Trash2, Ban, CheckCircle2, ChevronDown, Sparkles, Activity, Clock, Globe } from 'lucide-react';
+import { getImageUrl } from '../../lib/url';
 import { useAuth } from '../../contexts/AuthContext';
-import { Search, Trash2, ArrowUp, ArrowDown, History, X, ExternalLink, Shield, ShieldAlert, RefreshCw, BarChart2, LogIn, Image as ImageIcon, Sparkles } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
     PieChart, Pie, Cell
@@ -320,7 +320,7 @@ export function UserManager() {
                                                 className="p-2 text-violet-400 hover:bg-violet-500/10 rounded-lg transition-colors"
                                                 title="View User Insights"
                                             >
-                                                <BarChart2 size={18} />
+                                                <Activity size={18} />
                                             </button>
                                             <button
                                                 onClick={() => {
@@ -400,7 +400,7 @@ export function UserManager() {
                                         <div key={gen.id} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden group">
                                             <div className="aspect-square relative">
                                                 <img
-                                                    src={import.meta.env.VITE_API_URL + gen.imageUrl}
+                                                    src={getImageUrl(gen.imageUrl, import.meta.env.VITE_API_URL)}
                                                     alt={gen.summary || 'Generation'}
                                                     className="w-full h-full object-cover"
                                                 />
@@ -411,7 +411,7 @@ export function UserManager() {
                                                             {new Date(gen.createdAt).toLocaleString()}
                                                         </span>
                                                         <a
-                                                            href={import.meta.env.VITE_API_URL + gen.imageUrl}
+                                                            href={getImageUrl(gen.imageUrl, import.meta.env.VITE_API_URL)}
                                                             target="_blank"
                                                             className="text-white hover:text-indigo-400 p-1"
                                                             rel="noreferrer"
@@ -455,21 +455,21 @@ export function UserManager() {
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                         <div className="bg-white/5 p-4 rounded-xl border border-white/5 group">
                                             <div className="flex items-center gap-2 text-violet-400 mb-1">
-                                                <LogIn size={14} />
+                                                <Clock size={14} />
                                                 <span className="text-[10px] uppercase font-bold tracking-widest">Logins</span>
                                             </div>
                                             <div className="text-2xl font-bold">{userStats.totalLogins}</div>
                                         </div>
                                         <div className="bg-white/5 p-4 rounded-xl border border-white/5">
                                             <div className="flex items-center gap-2 text-fuchsia-400 mb-1">
-                                                <ImageIcon size={14} />
+                                                <Sparkles size={14} />
                                                 <span className="text-[10px] uppercase font-bold tracking-widest">Generations</span>
                                             </div>
                                             <div className="text-2xl font-bold">{userStats.totalGenerations}</div>
                                         </div>
                                         <div className="bg-white/5 p-4 rounded-xl border border-white/5">
                                             <div className="flex items-center gap-2 text-emerald-400 mb-1">
-                                                <History size={14} />
+                                                <Globe size={14} />
                                                 <span className="text-[10px] uppercase font-bold tracking-widest">Active For</span>
                                             </div>
                                             <div className="text-xs font-bold leading-tight truncate">
@@ -480,6 +480,31 @@ export function UserManager() {
                                     </div>
 
                                     {/* Financials / Token Usage */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="bg-theme-primary/5 p-4 rounded-xl border border-theme-primary/10">
+                                            <div className="flex items-center gap-2 text-theme-primary mb-1">
+                                                <CreditCard size={14} />
+                                                <span className="text-[10px] uppercase font-bold tracking-widest">Subscription Tier</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="text-xl font-bold capitalize">{userStats.subscriptionStatus || 'Free'}</div>
+                                                {userStats.subscriptionStatus === 'active' && (
+                                                    <span className="bg-emerald-500/20 text-emerald-400 text-[8px] px-1.5 py-0.5 rounded border border-emerald-500/30 uppercase font-black">Pro</span>
+                                                )}
+                                            </div>
+                                            <div className="text-[8px] text-gray-500 uppercase mt-0.5">
+                                                {userStats.subscriptionEnd ? `Renews ${new Date(userStats.subscriptionEnd).toLocaleDateString()}` : 'No active subscription'}
+                                            </div>
+                                        </div>
+                                        <div className="bg-theme-bg-secondary p-4 rounded-xl border border-theme-border flex flex-col justify-center">
+                                            <div className="flex items-center gap-2 text-theme-text-muted mb-1">
+                                                <History size={14} />
+                                                <span className="text-[10px] uppercase font-bold tracking-widest">Total Generations</span>
+                                            </div>
+                                            <div className="text-xl font-bold">{userStats.totalGenerations || 0}</div>
+                                            <div className="text-[8px] text-gray-500 uppercase mt-0.5">Across all models</div>
+                                        </div>
+                                    </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="bg-violet-500/5 p-4 rounded-xl border border-violet-500/10">
                                             <div className="flex items-center gap-2 text-violet-400 mb-1">
@@ -556,8 +581,59 @@ export function UserManager() {
                                         </div>
                                     </div>
 
-                                    <div className="text-center text-[10px] text-gray-600 italic">
-                                        Analytics data synced from Firebase Events & R2 Metadata.
+                                    {/* Recent Generations Snapshot */}
+                                    {userStats.recentGenerations?.length > 0 && (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Recent Generations</h4>
+                                            </div>
+                                            <div className="grid grid-cols-4 gap-2">
+                                                {userStats.recentGenerations.map(gen => (
+                                                    <a
+                                                        key={gen.id}
+                                                        href={getImageUrl(gen.imageUrl, import.meta.env.VITE_API_URL)}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="aspect-square rounded-lg overflow-hidden border border-white/5 hover:border-theme-primary/50 transition-colors group relative"
+                                                    >
+                                                        <img
+                                                            src={getImageUrl(gen.imageUrl, import.meta.env.VITE_API_URL)}
+                                                            alt=""
+                                                            className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all"
+                                                        />
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Login History */}
+                                    {userStats.loginHistory?.length > 0 && (
+                                        <div className="space-y-3">
+                                            <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Login History</h4>
+                                            <div className="bg-black/20 rounded-xl border border-white/5 overflow-hidden">
+                                                <table className="w-full text-[10px]">
+                                                    <thead>
+                                                        <tr className="border-b border-white/5 text-gray-500 uppercase">
+                                                            <th className="py-2 px-4 text-left font-bold">Time</th>
+                                                            <th className="py-2 px-4 text-right font-bold">IP Address</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="text-gray-400">
+                                                        {userStats.loginHistory.map((login, idx) => (
+                                                            <tr key={idx} className="border-b border-white/5 last:border-0">
+                                                                <td className="py-2 px-4">{new Date(login.timestamp).toLocaleString()}</td>
+                                                                <td className="py-2 px-4 text-right font-mono">{login.ip}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="text-center text-[8px] text-gray-700 font-mono uppercase tracking-tighter pt-4">
+                                        Data integrity secured via Cloudflare Workers & R2 Storage.
                                     </div>
                                 </div>
                             ) : (

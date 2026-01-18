@@ -216,7 +216,23 @@ export class Analytics {
             }
         })
         const gens = gensRes || []
-        const activeUsersCount = new Set(gens.map((g: any) => g.userId?.stringValue)).size
+        const loginEvents: any = await this.firebase.query('events', {
+            where: {
+                compositeFilter: {
+                    op: 'AND',
+                    filters: [
+                        { fieldFilter: { field: { fieldPath: 'eventType' }, op: 'EQUAL', value: { stringValue: 'user_login' } } },
+                        { fieldFilter: { field: { fieldPath: 'timestamp' }, op: 'GREATER_THAN_OR_EQUAL', value: { timestampValue: start } } },
+                        { fieldFilter: { field: { fieldPath: 'timestamp' }, op: 'LESS_THAN_OR_EQUAL', value: { timestampValue: end } } }
+                    ]
+                }
+            }
+        })
+
+        const activeUsersCount = new Set([
+            ...gens.map((g: any) => g.userId?.stringValue),
+            ...(loginEvents || []).map((l: any) => l.userId?.stringValue)
+        ]).size
 
         const eventsRes: any = await this.firebase.query('events', {
             where: {
