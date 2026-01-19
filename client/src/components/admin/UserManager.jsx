@@ -1,4 +1,5 @@
-import { History, Search, Filter, MoreVertical, Shield, User, CreditCard, Mail, Calendar, X, ExternalLink, Download, Trash2, Ban, CheckCircle2, ChevronDown, Sparkles, Activity, Clock, Globe } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { History, Search, Filter, MoreVertical, Shield, User, CreditCard, Mail, Calendar, X, ExternalLink, Download, Trash2, Ban, CheckCircle2, ChevronDown, Sparkles, Activity, Clock, Globe, RefreshCw, ShieldAlert, ArrowUp, ArrowDown } from 'lucide-react';
 import { getImageUrl } from '../../lib/url';
 import { useAuth } from '../../contexts/AuthContext';
 import {
