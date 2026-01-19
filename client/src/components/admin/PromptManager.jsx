@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Trash2, Plus, Upload, X, Download, FileSpreadsheet, Edit2, MoreVertical, Search } from 'lucide-react';
 
 export function PromptManager() {
-    const { user, getToken } = useAuth();
+    const { getToken } = useAuth();
     const [prompts, setPrompts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -22,7 +22,7 @@ export function PromptManager() {
     });
     const [previewUrl, setPreviewUrl] = useState(null);
 
-    const fetchPrompts = async () => {
+    const fetchPrompts = useCallback(async () => {
         try {
             setLoading(true);
             const token = await getToken();
@@ -37,11 +37,11 @@ export function PromptManager() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [getToken]);
 
     useEffect(() => {
         fetchPrompts();
-    }, []);
+    }, [fetchPrompts]);
 
     const handleImageChange = (e) => {
         const file = e.target.files[0];
@@ -52,18 +52,38 @@ export function PromptManager() {
     };
 
     const handleEdit = (prompt) => {
-        setEditingId(prompt.id);
-        setFormData({
-            name: prompt.name,
-            prompt: prompt.prompt || '',
-            tags: prompt.tags ? prompt.tags.join(', ') : '',
-            category: prompt.category || 'Photorealistic',
-            image: null
-        });
-        setPreviewUrl(
-            prompt.imageUrl ? (prompt.imageUrl.startsWith('http') ? prompt.imageUrl : `${import.meta.env.VITE_API_URL}/api/image/${encodeURIComponent(prompt.imageUrl)}`) : null
-        );
-        setShowForm(true);
+        try {
+            console.log("Editing prompt:", prompt.id);
+            setEditingId(prompt.id);
+
+            // Format tags defensively - handle arrays, strings, or nulls
+            let tagString = '';
+            if (Array.isArray(prompt.tags)) {
+                tagString = prompt.tags.join(', ');
+            } else if (typeof prompt.tags === 'string') {
+                tagString = prompt.tags;
+            }
+
+            setFormData({
+                name: prompt.name || '',
+                prompt: prompt.prompt || '',
+                tags: tagString,
+                category: prompt.category || 'Photorealistic',
+                image: null
+            });
+
+            setPreviewUrl(
+                prompt.imageUrl ? (prompt.imageUrl.startsWith('http') ? prompt.imageUrl : `${import.meta.env.VITE_API_URL}/api/image/${encodeURIComponent(prompt.imageUrl)}`) : null
+            );
+
+            setShowForm(true);
+
+            // Ensure the user sees the form
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (err) {
+            console.error("Error in handleEdit:", err);
+            alert("Failed to open edit form: " + err.message);
+        }
     };
 
     const resetForm = (shouldClose = true) => {
@@ -157,7 +177,7 @@ export function PromptManager() {
         reader.onload = async (event) => {
             const text = event.target.result;
             const lines = text.split('\n');
-            const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+            // const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
 
             // Basic CSV parsing (not robust for all edge cases but good for simple imports)
             const newPrompts = [];
@@ -448,10 +468,10 @@ export function PromptManager() {
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex flex-wrap gap-1">
-                                                    {prompt.tags.slice(0, 3).map((tag, i) => (
+                                                    {(Array.isArray(prompt.tags) ? prompt.tags : []).slice(0, 3).map((tag, i) => (
                                                         <span key={i} className="text-xs bg-white/10 text-gray-400 px-1.5 py-0.5 rounded">#{tag}</span>
                                                     ))}
-                                                    {prompt.tags.length > 3 && <span className="text-xs text-gray-500">+{prompt.tags.length - 3}</span>}
+                                                    {Array.isArray(prompt.tags) && prompt.tags.length > 3 && <span className="text-xs text-gray-500">+{prompt.tags.length - 3}</span>}
                                                 </div>
                                             </td>
                                             <td className="p-4 text-center">
@@ -467,16 +487,22 @@ export function PromptManager() {
                                             <td className="p-4 text-right">
                                                 <div className="flex items-center justify-end gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button
-                                                        onClick={() => handleEdit(prompt)}
-                                                        className="p-1.5 rounded-lg hover:bg-violet-500/20 text-gray-400 hover:text-violet-300 transition-colors"
-                                                        title="Edit"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleEdit(prompt);
+                                                        }}
+                                                        className="p-2 bg-theme-bg-secondary text-theme-text-muted hover:text-violet-400 hover:border-violet-500/50 rounded-lg border border-theme-glass-border transition-all flex items-center justify-center cursor-pointer"
+                                                        title="Edit Template"
                                                     >
                                                         <Edit2 size={16} />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDelete(prompt.id)}
-                                                        className="p-1.5 rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-300 transition-colors"
-                                                        title="Delete"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDelete(prompt.id);
+                                                        }}
+                                                        className="p-2 bg-theme-bg-secondary text-theme-text-muted hover:text-red-400 hover:border-red-500/50 rounded-lg border border-theme-glass-border transition-all flex items-center justify-center cursor-pointer"
+                                                        title="Delete Template"
                                                     >
                                                         <Trash2 size={16} />
                                                     </button>
