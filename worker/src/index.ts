@@ -1235,7 +1235,8 @@ app.get('/api/admin/users/:id/generations', async (c) => {
   const userId = c.req.param('id')
 
   try {
-    const results = await firebase.query('generations', {
+    let results: any[] = []
+    const baseQuery = {
       where: {
         fieldFilter: {
           field: { fieldPath: 'userId' },
@@ -1243,21 +1244,46 @@ app.get('/api/admin/users/:id/generations', async (c) => {
           value: { stringValue: userId }
         }
       },
-      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
       limit: 50
-    })
+    }
 
-    const generations = results.map((doc: any) => ({
-      id: doc.id,
-      prompt: doc.prompt?.stringValue,
-      summary: doc.summary?.stringValue,
-      imageUrl: `/api/image/${encodeURIComponent(doc.resultPath?.stringValue)}`,
-      createdAt: doc.createdAt?.timestampValue,
-      status: doc.status?.stringValue
-    }))
+    try {
+      // 1. Try with ordering (requires index)
+      results = await firebase.query('generations', {
+        ...baseQuery,
+        orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }]
+      })
+    } catch (e: any) {
+      console.warn(`[Admin] Ordered generations fetch failed for user ${userId} (likely missing index). Index URL: https://console.firebase.google.com/v1/r/project/justingenerator/firestore/databases/justingeneratordb/indexes?create_composite=Cltwcm9qZWN0cy9qdXN0aW5nZW5lcmF0b3IvZGF0YWJhc2VzL2p1c3RpbmdlbmVyYXRvcmRiL2NvbGxlY3Rpb25Hcm91cHMvZ2VuZXJhdGlvbnMvaW5kZXhlcy9fEAEaCgoGdXNlcklkEAEaDQoJY3JlYXRlZEF0EAIaDAoIX19uYW1lX18QAg`);
+
+      // 2. Fallback to unordered query if index is missing
+      results = await firebase.query('generations', baseQuery)
+
+      // Sort manually in memory if we have small results
+      results.sort((a, b) => {
+        const dateA = a.createdAt?.timestampValue || ''
+        const dateB = b.createdAt?.timestampValue || ''
+        return dateB.localeCompare(dateA)
+      })
+    }
+
+    const generations = results.map((doc: any) => {
+      const resultPath = doc.resultPath?.stringValue
+      const imageUrl = doc.imageUrl?.stringValue || (resultPath ? `/api/image/${encodeURIComponent(resultPath)}` : null)
+
+      return {
+        id: doc.id,
+        prompt: doc.prompt?.stringValue,
+        summary: doc.summary?.stringValue,
+        imageUrl,
+        createdAt: doc.createdAt?.timestampValue,
+        status: doc.status?.stringValue
+      }
+    })
 
     return c.json({ status: 'success', generations })
   } catch (e: any) {
+    console.error(`[Admin] Failed to fetch generations for user ${userId}:`, e)
     return c.json({ error: e.message }, 500)
   }
 })

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { History, Search, Filter, MoreVertical, Shield, User, CreditCard, Mail, Calendar, X, ExternalLink, Download, Trash2, Ban, CheckCircle2, ChevronDown, Sparkles, Activity, Clock, Globe, RefreshCw, ShieldAlert, ArrowUp, ArrowDown } from 'lucide-react';
 import { getImageUrl } from '../../lib/url';
 import { useAuth } from '../../contexts/AuthContext';
@@ -17,11 +17,12 @@ export function UserManager() {
     const [selectedUser, setSelectedUser] = useState(null);
     const [userGenerations, setUserGenerations] = useState([]);
     const [loadingGenerations, setLoadingGenerations] = useState(false);
+    const [fetchError, setFetchError] = useState(null);
     const [insightUser, setInsightUser] = useState(null);
     const [userStats, setUserStats] = useState(null);
     const [loadingStats, setLoadingStats] = useState(false);
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         try {
             setLoading(true);
             const token = await getToken();
@@ -40,19 +41,26 @@ export function UserManager() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [search, sortField, sortOrder, getToken]);
 
     const fetchUserGenerations = async (userId) => {
         try {
             setLoadingGenerations(true);
+            setFetchError(null);
+            setUserGenerations([]);
             const token = await getToken();
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/users/${userId}/generations`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();
-            setUserGenerations(data.generations || []);
+            if (res.ok) {
+                setUserGenerations(data.generations || []);
+            } else {
+                setFetchError(data.error || 'Failed to load generations');
+            }
         } catch (e) {
             console.error("Failed to fetch generations", e);
+            setFetchError(e.message);
         } finally {
             setLoadingGenerations(false);
         }
@@ -155,7 +163,7 @@ export function UserManager() {
     useEffect(() => {
         const debounce = setTimeout(fetchUsers, 500);
         return () => clearTimeout(debounce);
-    }, [search, sortField, sortOrder]);
+    }, [fetchUsers]);
 
     const handleViewInsights = async (user) => {
         setInsightUser(user);
@@ -350,7 +358,7 @@ export function UserManager() {
                                                                 headers: { Authorization: `Bearer ${token}` }
                                                             });
                                                             setUsers(users.filter(u => u.id !== user.id));
-                                                        } catch (e) {
+                                                        } catch {
                                                             alert('Failed to delete user');
                                                         }
                                                     }
@@ -390,6 +398,24 @@ export function UserManager() {
                                         <History size={32} />
                                     </div>
                                     <p>Loading history...</p>
+                                </div>
+                            ) : fetchError ? (
+                                <div className="flex flex-col items-center justify-center h-64 text-center px-4">
+                                    <div className="p-3 bg-red-500/10 rounded-full text-red-400 mb-4">
+                                        <ShieldAlert size={32} />
+                                    </div>
+                                    <h4 className="text-red-300 font-bold mb-2">Query Failed</h4>
+                                    <p className="text-sm text-gray-400 max-w-sm mb-4">
+                                        {fetchError.includes('requires an index')
+                                            ? "This query requires a Firestore index that hasn't finished building yet."
+                                            : fetchError}
+                                    </p>
+                                    {fetchError.includes('requires an index') && (
+                                        <div className="p-4 bg-violet-600/10 border border-violet-500/20 rounded-xl text-xs text-violet-300 max-w-md">
+                                            <p className="font-bold mb-1">Index Fallback Active</p>
+                                            <p>The backend is attempting to fetch data without sorting. Results might be out of order until the index is ready.</p>
+                                        </div>
+                                    )}
                                 </div>
                             ) : userGenerations.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-64 text-gray-500">
