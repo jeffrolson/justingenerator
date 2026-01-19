@@ -197,9 +197,9 @@ export function Referrals() {
                     <table className="w-full text-left">
                         <thead className="bg-theme-bg-primary/50 text-theme-text-secondary text-xs uppercase tracking-wider">
                             <tr>
-                                <th className="p-4 pl-8">Referrer (UID)</th>
+                                <th className="p-4 pl-8">Referrer (Email)</th>
                                 <th className="p-4 text-center"></th>
-                                <th className="p-4">Referred (UID)</th>
+                                <th className="p-4">Referred (Email)</th>
                                 <th className="p-4 font-mono text-right">Reward</th>
                                 <th className="p-4 pr-8 text-right">Date</th>
                             </tr>
@@ -212,14 +212,14 @@ export function Referrals() {
                             ) : (
                                 referrals.map(ref => (
                                     <tr key={ref.id} className="hover:bg-white/5 transition-colors group">
-                                        <td className="p-4 pl-8 font-mono text-xs text-violet-300">
-                                            {ref.referrerId}
+                                        <td className="p-4 pl-8 font-mono text-xs text-violet-300" title={ref.referrerId}>
+                                            {ref.referrerEmail || ref.referrerId}
                                         </td>
                                         <td className="p-4 text-center">
                                             <ArrowRight size={14} className="text-gray-600 group-hover:text-gray-400 transition-colors inline-block" />
                                         </td>
-                                        <td className="p-4 font-mono text-xs text-amber-300">
-                                            {ref.referredId}
+                                        <td className="p-4 font-mono text-xs text-amber-300" title={ref.referredId}>
+                                            {ref.referredEmail || ref.referredId}
                                         </td>
                                         <td className="p-4 font-mono text-right text-sm">
                                             +{ref.amount} Credits

@@ -1529,12 +1529,47 @@ app.get('/api/admin/referrals', async (c) => {
   const firebase = c.get('firebase')
   try {
     const refs = await firebase.query('referrals', { limit: 1000 })
+
+    // Collect all unique user IDs to fetch emails
+    const userIds = new Set<string>()
+    refs.forEach((r: any) => {
+      const referrerId = r.referrerId?.stringValue
+      const referredId = r.referredId?.stringValue
+      if (referrerId) userIds.add(referrerId)
+      if (referredId) userIds.add(referredId)
+    })
+
+    // Fetch user details for all involved users
+    const userMap = new Map<string, string>()
+    if (userIds.size > 0) {
+      // Helper to fetch in batches if needed (simple implementation for now)
+      // Firestore REST batchGet might be complex to implement with current wrappers, 
+      // so we'll do parallel requests for now as list is likely small-ish or we accept the cost.
+      // OPTIMIZATION: In a real prod app with thousands, we'd use 'in' query or batchGet.
+      // Given current 'firebase.query' capabilities, we can try to query users collection?
+      // Or just loop fetches. Let's try loop fetches with Promise.all for simplicity first.
+
+      const promises = Array.from(userIds).map(async (uid) => {
+        try {
+          const uDoc: any = await firebase.firestore('GET', `users/${uid}`)
+          if (uDoc && uDoc.fields?.email?.stringValue) {
+            userMap.set(uid, uDoc.fields.email.stringValue)
+          }
+        } catch (e) {
+          // Ignore missing users
+        }
+      })
+      await Promise.all(promises)
+    }
+
     return c.json({
       status: 'success',
       referrals: refs.map((r: any) => ({
         id: r.id,
         referrerId: r.referrerId?.stringValue,
+        referrerEmail: userMap.get(r.referrerId?.stringValue || '') || r.referrerId?.stringValue,
         referredId: r.referredId?.stringValue,
+        referredEmail: userMap.get(r.referredId?.stringValue || '') || r.referredId?.stringValue,
         amount: parseInt(r.amount?.integerValue || '0'),
         timestamp: r.timestamp?.timestampValue
       }))
