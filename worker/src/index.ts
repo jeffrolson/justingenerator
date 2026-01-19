@@ -1775,6 +1775,7 @@ app.get('/api/admin/branding', async (c) => {
       apple: doc?.fields?.apple?.stringValue || '/apple-touch-icon.png',
       'pwa-192': doc?.fields?.['pwa-192']?.stringValue || '/icon-192.png',
       'pwa-512': doc?.fields?.['pwa-512']?.stringValue || '/icon-512.png',
+      preview: doc?.fields?.preview?.stringValue || '/preview.png',
       typography: {
         primary: doc?.fields?.typography?.mapValue?.fields?.primary?.stringValue || 'Outfit, sans-serif',
         secondary: doc?.fields?.typography?.mapValue?.fields?.secondary?.stringValue || 'Inter, sans-serif',
@@ -1803,7 +1804,7 @@ app.get('/api/admin/branding', async (c) => {
 app.post('/api/admin/branding', async (c) => {
   const firebase = c.get('firebase')
   const body = await c.req.json() as any
-  const { logo, favicon, apple, typography, colors } = body
+  const { logo, favicon, apple, preview, typography, colors } = body
 
   try {
     const fields: any = {
@@ -1815,6 +1816,7 @@ app.post('/api/admin/branding', async (c) => {
     if (apple) fields.apple = { stringValue: apple }
     if (body['pwa-192']) fields['pwa-192'] = { stringValue: body['pwa-192'] }
     if (body['pwa-512']) fields['pwa-512'] = { stringValue: body['pwa-512'] }
+    if (preview) fields.preview = { stringValue: preview }
 
     if (typography) {
       fields.typography = {
@@ -1844,7 +1846,7 @@ app.post('/api/admin/branding', async (c) => {
       }
     }
 
-    await firebase.firestore('PATCH', 'settings/branding?updateMask.fieldPaths=logo&updateMask.fieldPaths=favicon&updateMask.fieldPaths=colors&updateMask.fieldPaths=typography&updateMask.fieldPaths=currentProfile', { fields })
+    await firebase.firestore('PATCH', 'settings/branding?updateMask.fieldPaths=logo&updateMask.fieldPaths=favicon&updateMask.fieldPaths=apple&updateMask.fieldPaths=preview&updateMask.fieldPaths=pwa-192&updateMask.fieldPaths=pwa-512&updateMask.fieldPaths=colors&updateMask.fieldPaths=typography&updateMask.fieldPaths=currentProfile', { fields })
     return c.json({ status: 'success' })
   } catch (e: any) {
     return c.json({ error: e.message }, 500)

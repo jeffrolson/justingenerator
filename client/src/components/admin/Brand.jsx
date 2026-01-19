@@ -409,7 +409,8 @@ export function Brand() {
                         { id: 'favicon', name: 'Favicon', size: '32x32', format: 'PNG' },
                         { id: 'apple', name: 'Apple', size: '180x180', format: 'PNG' },
                         { id: 'pwa-192', name: 'PWA-192', size: '192x192', format: 'PNG' },
-                        { id: 'pwa-512', name: 'PWA-512', size: '512x512', format: 'PNG' }
+                        { id: 'pwa-512', name: 'PWA-512', size: '512x512', format: 'PNG' },
+                        { id: 'preview', name: 'Social Preview / iMessage', size: '1200x630', format: 'PNG/JPG' }
                     ].map(asset => (
                         <div key={asset.id} className="bg-theme-bg-secondary border border-theme-glass-border rounded-2xl overflow-hidden group flex flex-col">
                             <div className="aspect-square bg-black/40 flex items-center justify-center p-6 relative">
